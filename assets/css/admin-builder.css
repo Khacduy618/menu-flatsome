@@ -1,0 +1,966 @@
+/**
+ * Handdn Navigation & Menu Manager - Modern Minimalist Admin Styles (Shadcn UI)
+ *
+ * @package Device_Menu_Manager
+ */
+
+:root {
+	--dmm-bg: #fafafa;
+	--dmm-card: #ffffff;
+	--dmm-muted-bg: #f4f4f5;
+	--dmm-muted-bg-hover: #e4e4e7;
+	--dmm-border: #e4e4e7;
+	--dmm-input: #e4e4e7;
+	--dmm-ring: #18181b;
+	--dmm-text: #09090b;
+	--dmm-muted-text: #71717a;
+	--dmm-primary: #18181b;
+	--dmm-primary-fg: #fafafa;
+	--dmm-primary-hover: #27272a;
+	--dmm-danger: #ef4444;
+	--dmm-danger-hover: #dc2626;
+	--dmm-danger-fg: #ffffff;
+	--dmm-radius: 6px;
+	--dmm-radius-lg: 8px;
+	--dmm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+	--dmm-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+	--dmm-shadow-sheet: -4px 0 24px rgba(0, 0, 0, 0.12);
+	--dmm-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ==========================================================================
+   1. RESET & WRAPPER
+   ========================================================================== */
+.dmm-admin-wrap {
+	margin: 20px 20px 40px 0 !important;
+	max-width: 1200px;
+	font-family: var(--dmm-font-sans);
+	color: var(--dmm-text);
+	box-sizing: border-box;
+}
+
+.dmm-admin-wrap * {
+	box-sizing: border-box;
+}
+
+/* ==========================================================================
+   2. SHADCN HEADER
+   ========================================================================== */
+.dmm-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding-bottom: 20px;
+	border-bottom: 1px solid var(--dmm-border);
+	margin-bottom: 24px;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.dmm-header-brand {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+
+.dmm-brand-icon {
+	width: 40px;
+	height: 40px;
+	border-radius: var(--dmm-radius-lg);
+	background: var(--dmm-primary);
+	color: var(--dmm-primary-fg);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.dmm-title {
+	margin: 0 !important;
+	padding: 0 !important;
+	font-size: 20px !important;
+	font-weight: 600 !important;
+	letter-spacing: -0.02em !important;
+	color: var(--dmm-text) !important;
+	line-height: 1.2 !important;
+}
+
+.dmm-subtitle {
+	margin: 4px 0 0 !important;
+	padding: 0 !important;
+	font-size: 13px !important;
+	color: var(--dmm-muted-text) !important;
+}
+
+.dmm-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+/* ==========================================================================
+   3. BUTTONS (Shadcn style)
+   ========================================================================== */
+.dmm-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	border-radius: var(--dmm-radius);
+	font-size: 13px;
+	font-weight: 500;
+	height: 36px;
+	padding: 0 14px;
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+	border: 1px solid transparent;
+	background: transparent;
+	line-height: 1;
+	text-decoration: none !important;
+	white-space: nowrap;
+}
+
+.dmm-btn:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 2px var(--dmm-bg), 0 0 0 4px var(--dmm-ring);
+}
+
+.dmm-btn-sm {
+	height: 30px;
+	padding: 0 10px;
+	font-size: 12px;
+}
+
+.dmm-btn-icon {
+	width: 30px;
+	padding: 0;
+}
+
+.dmm-btn-primary {
+	background: var(--dmm-primary) !important;
+	color: var(--dmm-primary-fg) !important;
+	border-color: var(--dmm-primary) !important;
+}
+
+.dmm-btn-primary:hover {
+	background: var(--dmm-primary-hover) !important;
+	border-color: var(--dmm-primary-hover) !important;
+}
+
+.dmm-btn-outline {
+	background: #ffffff !important;
+	color: var(--dmm-text) !important;
+	border-color: var(--dmm-border) !important;
+	box-shadow: var(--dmm-shadow-sm);
+}
+
+.dmm-btn-outline:hover {
+	background: var(--dmm-muted-bg) !important;
+	border-color: #d4d4d8 !important;
+}
+
+.dmm-btn-ghost {
+	background: transparent !important;
+	color: var(--dmm-text) !important;
+	border-color: transparent !important;
+}
+
+.dmm-btn-ghost:hover {
+	background: var(--dmm-muted-bg) !important;
+}
+
+.dmm-btn-danger {
+	background: var(--dmm-danger) !important;
+	color: var(--dmm-danger-fg) !important;
+	border-color: var(--dmm-danger) !important;
+}
+
+.dmm-btn-danger:hover {
+	background: var(--dmm-danger-hover) !important;
+}
+
+.dmm-btn-group {
+	display: inline-flex;
+	border: 1px solid var(--dmm-border);
+	border-radius: var(--dmm-radius);
+	background: #ffffff;
+	overflow: hidden;
+}
+
+.dmm-btn-group .dmm-btn {
+	border-radius: 0;
+	border: none;
+	border-right: 1px solid var(--dmm-border);
+}
+
+.dmm-btn-group .dmm-btn:last-child {
+	border-right: none;
+}
+
+/* ==========================================================================
+   4. NAVIGATION TABS (Segmented Pill Bar)
+   ========================================================================== */
+.dmm-tabs-nav {
+	display: inline-flex;
+	padding: 3px;
+	background: var(--dmm-muted-bg);
+	border-radius: var(--dmm-radius-lg);
+	border: 1px solid var(--dmm-border);
+	margin-bottom: 24px;
+	gap: 2px;
+}
+
+.dmm-tab-trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 16px;
+	border-radius: var(--dmm-radius);
+	border: none;
+	background: transparent;
+	color: var(--dmm-muted-text);
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	line-height: 1;
+}
+
+.dmm-tab-trigger:hover {
+	color: var(--dmm-text);
+}
+
+.dmm-tab-trigger.active {
+	background: #ffffff;
+	color: var(--dmm-text);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+	font-weight: 600;
+}
+
+.dmm-tab-panel {
+	display: none;
+}
+
+.dmm-tab-panel.active {
+	display: block;
+}
+
+/* ==========================================================================
+   5. TOOLBAR & FILTER BAR
+   ========================================================================== */
+.dmm-toolbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+	flex-wrap: wrap;
+}
+
+.dmm-toolbar-group {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.dmm-import-wp-group {
+	display: inline-flex;
+	gap: 6px;
+	align-items: center;
+}
+
+.dmm-item-count-badge {
+	font-size: 11.5px;
+	font-weight: 500;
+	color: var(--dmm-muted-text);
+	background: var(--dmm-muted-bg);
+	padding: 4px 10px;
+	border-radius: 9999px;
+	border: 1px solid var(--dmm-border);
+}
+
+/* ==========================================================================
+   6. TREE CONTAINER & HIERARCHICAL ITEMS
+   ========================================================================== */
+.dmm-tree-hint {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	background: var(--dmm-muted-bg);
+	border-radius: var(--dmm-radius);
+	font-size: 12.5px;
+	color: var(--dmm-muted-text);
+	margin-bottom: 14px;
+	border: 1px solid var(--dmm-border);
+}
+
+.dmm-nested-sortable {
+	list-style: none !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	min-height: 100px;
+}
+
+.dmm-tree-item {
+	margin-bottom: 6px;
+	list-style: none !important;
+	transition: margin-left 0.15s ease;
+}
+
+/* Depth indentation */
+.dmm-tree-item[data-depth="0"] { margin-left: 0; }
+.dmm-tree-item[data-depth="1"] { margin-left: 32px; }
+.dmm-tree-item[data-depth="2"] { margin-left: 64px; }
+.dmm-tree-item[data-depth="3"] { margin-left: 96px; }
+.dmm-tree-item[data-depth="4"] { margin-left: 128px; }
+.dmm-tree-item[data-depth="5"] { margin-left: 160px; }
+.dmm-tree-item[data-depth="6"] { margin-left: 192px; }
+
+/* Item Card */
+.dmm-item-card {
+	display: flex;
+	align-items: center;
+	background: #ffffff;
+	border: 1px solid var(--dmm-border);
+	border-radius: var(--dmm-radius);
+	padding: 9px 12px;
+	gap: 10px;
+	transition: all 0.15s ease;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.dmm-item-card:hover {
+	border-color: #d4d4d8;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.dmm-tree-item.dmm-is-heading > .dmm-item-card {
+	background: #fbfbfa;
+	border-left: 3px solid #71717a;
+}
+
+/* Drag Handle */
+.dmm-item-handle {
+	color: #a1a1aa;
+	cursor: grab;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px;
+	flex-shrink: 0;
+	transition: color 0.15s ease;
+}
+
+.dmm-item-handle:hover {
+	color: var(--dmm-text);
+}
+
+/* Collapse Toggle Chevron */
+.dmm-collapse-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	color: var(--dmm-muted-text);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+	transition: transform 0.2s ease, color 0.15s ease;
+}
+
+.dmm-collapse-btn:hover {
+	color: var(--dmm-text);
+}
+
+.dmm-tree-item.dmm-is-collapsed .dmm-collapse-btn svg {
+	transform: rotate(-90deg);
+}
+
+.dmm-collapse-placeholder {
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+}
+
+/* Item Main Content */
+.dmm-item-main {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+	min-width: 0;
+}
+
+.dmm-item-title {
+	font-size: 13.5px;
+	font-weight: 500;
+	color: var(--dmm-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.dmm-item-url-preview {
+	font-size: 12px;
+	color: var(--dmm-muted-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-left: 4px;
+}
+
+/* Badges */
+.dmm-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 2px 6px;
+	border-radius: 4px;
+	line-height: 1.2;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	flex-shrink: 0;
+}
+
+.dmm-badge-depth {
+	background: var(--dmm-muted-bg);
+	color: var(--dmm-muted-text);
+	border: 1px solid var(--dmm-border);
+}
+
+.dmm-badge-primary {
+	background: #18181b;
+	color: #fafafa;
+}
+
+.dmm-badge-secondary {
+	background: var(--dmm-muted-bg);
+	color: var(--dmm-muted-text);
+	border: 1px solid var(--dmm-border);
+}
+
+.dmm-badge-visual {
+	background: #fdf4ff;
+	color: #9333ea;
+	border: 1px solid #f0abfc;
+}
+
+.dmm-badge-feature {
+	background: #f0fdf4;
+	color: #16a34a;
+	border: 1px solid #bbf7d0;
+}
+
+.dmm-badge-heading {
+	background: #f4f4f5;
+	color: #52525b;
+}
+
+.dmm-badge-sizes {
+	background: #eff6ff;
+	color: #2563eb;
+	border: 1px solid #bfdbfe;
+}
+
+.dmm-badge-tag {
+	background: #fef3c7;
+	color: #b45309;
+}
+
+/* Sub-items count badge */
+.dmm-sub-count-badge {
+	font-size: 11px;
+	color: var(--dmm-muted-text);
+	background: var(--dmm-muted-bg);
+	padding: 1px 7px;
+	border-radius: 9999px;
+	cursor: pointer;
+	margin-left: 6px;
+}
+
+/* Actions right */
+.dmm-item-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+/* Sortable Placeholder */
+.dmm-sortable-placeholder {
+	height: 42px;
+	background: #f4f4f5;
+	border: 1.5px dashed #a1a1aa;
+	border-radius: var(--dmm-radius);
+	margin-bottom: 6px;
+}
+
+/* ==========================================================================
+   7. SHADCN SLIDE-OVER SHEET INSPECTOR
+   ========================================================================== */
+.dmm-sheet-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(9, 9, 11, 0.4);
+	backdrop-filter: blur(2px);
+	z-index: 100050; /* Above #wpadminbar (99999), below WP Media Modal (160000) */
+	display: flex;
+	justify-content: flex-end;
+}
+
+.dmm-sheet {
+	width: clamp(420px, 40vw, 560px);
+	height: 100%;
+	background: #ffffff;
+	box-shadow: var(--dmm-shadow-sheet);
+	display: flex;
+	flex-direction: column;
+	animation: dmmSheetSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+	box-sizing: border-box;
+}
+
+@keyframes dmmSheetSlideIn {
+	from { transform: translateX(100%); }
+	to { transform: translateX(0); }
+}
+
+.dmm-sheet-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 18px 24px;
+	border-bottom: 1px solid var(--dmm-border);
+	flex-shrink: 0;
+}
+
+.dmm-sheet-header-title {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.dmm-sheet-header-title h3 {
+	margin: 0 !important;
+	padding: 0 !important;
+	font-size: 16px !important;
+	font-weight: 600 !important;
+	color: var(--dmm-text) !important;
+}
+
+.dmm-sheet-badge {
+	font-size: 11px;
+	background: var(--dmm-muted-bg);
+	color: var(--dmm-muted-text);
+	padding: 2px 7px;
+	border-radius: 4px;
+}
+
+.dmm-sheet-close-btn {
+	color: var(--dmm-muted-text);
+	border: none;
+	background: none;
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 4px;
+}
+
+.dmm-sheet-close-btn:hover {
+	color: var(--dmm-text);
+	background: var(--dmm-muted-bg);
+}
+
+.dmm-sheet-tabs {
+	display: flex;
+	border-bottom: 1px solid var(--dmm-border);
+	padding: 0 24px;
+	background: var(--dmm-bg);
+	gap: 16px;
+	flex-shrink: 0;
+}
+
+.dmm-sheet-tab-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 12px 2px;
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--dmm-muted-text);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.dmm-sheet-tab-btn:hover {
+	color: var(--dmm-text);
+}
+
+.dmm-sheet-tab-btn.active {
+	color: var(--dmm-text);
+	border-bottom-color: var(--dmm-primary);
+	font-weight: 600;
+}
+
+.dmm-sheet-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 24px;
+}
+
+.dmm-sheet-panel {
+	display: none;
+}
+
+.dmm-sheet-panel.active {
+	display: block;
+}
+
+.dmm-sheet-footer {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 10px;
+	padding: 16px 24px;
+	border-top: 1px solid var(--dmm-border);
+	background: #ffffff;
+	flex-shrink: 0;
+}
+
+/* ==========================================================================
+   8. FORM CONTROLS (Shadcn style)
+   ========================================================================== */
+.dmm-form-group {
+	margin-bottom: 16px;
+}
+
+.dmm-label {
+	display: block;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--dmm-text);
+	margin-bottom: 6px;
+}
+
+.dmm-input,
+.dmm-input-select,
+.dmm-textarea {
+	width: 100%;
+	height: 36px;
+	padding: 0 12px;
+	font-size: 13px;
+	color: var(--dmm-text) !important;
+	background: #ffffff !important;
+	border: 1px solid var(--dmm-input) !important;
+	border-radius: var(--dmm-radius) !important;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+	box-shadow: var(--dmm-shadow-sm) !important;
+}
+
+.dmm-textarea {
+	height: auto;
+	padding: 8px 12px;
+	line-height: 1.4;
+	resize: vertical;
+}
+
+.dmm-input:focus,
+.dmm-input-select:focus,
+.dmm-textarea:focus {
+	outline: none !important;
+	border-color: var(--dmm-ring) !important;
+	box-shadow: 0 0 0 1px var(--dmm-ring) !important;
+}
+
+.dmm-grid-2 {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px;
+}
+
+.dmm-inline-fields {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.dmm-media-group {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.dmm-media-group .dmm-input {
+	flex: 1;
+}
+
+.dmm-btn-select-media {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	font-weight: 500;
+	font-size: 13px;
+	border: 1px solid var(--dmm-border);
+	background: #fff;
+	color: var(--dmm-text);
+	border-radius: var(--dmm-radius);
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.dmm-btn-select-media:hover {
+	background: #f1f5f9;
+	border-color: #cbd5e1;
+	color: #0f172a;
+}
+
+.dmm-media-preview {
+	display: inline-flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 12px;
+	background: #f8fafc;
+	border: 1px solid var(--dmm-border);
+	border-radius: var(--dmm-radius);
+	margin-top: 6px;
+}
+
+.dmm-media-preview img {
+	max-height: 80px;
+	max-width: 140px;
+	border-radius: 4px;
+	object-fit: cover;
+	display: block;
+	border: 1px solid var(--dmm-border);
+}
+
+.dmm-media-preview .dmm-btn-remove-media {
+	color: #dc2626;
+	font-size: 12px;
+	padding: 4px 8px;
+	height: auto;
+	line-height: 1.4;
+}
+
+.dmm-media-preview .dmm-btn-remove-media:hover {
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+.dmm-callout {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	border-radius: var(--dmm-radius);
+	background: #f0f9ff;
+	border: 1px solid #bae6fd;
+	color: #0369a1;
+	font-size: 12.5px;
+	margin-bottom: 16px;
+}
+
+.dmm-checkbox-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	color: var(--dmm-text);
+	cursor: pointer;
+}
+
+/* Shadcn Toggle Switch */
+.dmm-switch {
+	position: relative;
+	display: inline-block;
+	width: 40px;
+	height: 22px;
+	flex-shrink: 0;
+}
+
+.dmm-switch input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.dmm-switch-slider {
+	position: absolute;
+	cursor: pointer;
+	inset: 0;
+	background-color: #e4e4e7;
+	transition: 0.2s ease;
+	border-radius: 9999px;
+}
+
+.dmm-switch-slider:before {
+	position: absolute;
+	content: "";
+	height: 16px;
+	width: 16px;
+	left: 3px;
+	bottom: 3px;
+	background-color: white;
+	transition: 0.2s ease;
+	border-radius: 50%;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.dmm-switch input:checked + .dmm-switch-slider {
+	background-color: var(--dmm-primary);
+}
+
+.dmm-switch input:checked + .dmm-switch-slider:before {
+	transform: translateX(18px);
+}
+
+/* ==========================================================================
+   9. CARDS (Tab 2 & Tab 3)
+   ========================================================================== */
+.dmm-card {
+	background: #ffffff;
+	border: 1px solid var(--dmm-border);
+	border-radius: var(--dmm-radius-lg);
+	box-shadow: var(--dmm-shadow-sm);
+	overflow: hidden;
+}
+
+.dmm-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 18px 22px;
+	border-bottom: 1px solid var(--dmm-border);
+}
+
+.dmm-card-title {
+	margin: 0 !important;
+	padding: 0 !important;
+	font-size: 15px !important;
+	font-weight: 600 !important;
+	color: var(--dmm-text) !important;
+}
+
+.dmm-card-description {
+	margin: 4px 0 0 !important;
+	padding: 0 !important;
+	font-size: 12.5px !important;
+	color: var(--dmm-muted-text) !important;
+}
+
+.dmm-card-body {
+	padding: 22px;
+}
+
+.dmm-code {
+	display: inline-block;
+	background: var(--dmm-muted-bg);
+	color: var(--dmm-text);
+	padding: 6px 12px;
+	border-radius: var(--dmm-radius);
+	font-size: 12.5px;
+	border: 1px solid var(--dmm-border);
+	font-family: monospace;
+}
+
+/* ==========================================================================
+   10. MODAL / DIALOG (Delete confirmation)
+   ========================================================================== */
+.dmm-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(9, 9, 11, 0.4);
+	backdrop-filter: blur(2px);
+	z-index: 100100;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+}
+
+.dmm-dialog {
+	width: 100%;
+	max-width: 440px;
+	background: #ffffff;
+	border-radius: var(--dmm-radius-lg);
+	box-shadow: var(--dmm-shadow);
+	border: 1px solid var(--dmm-border);
+	overflow: hidden;
+	animation: dmmDialogIn 0.15s ease-out;
+}
+
+@keyframes dmmDialogIn {
+	from { opacity: 0; transform: scale(0.96); }
+	to { opacity: 1; transform: scale(1); }
+}
+
+.dmm-dialog-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--dmm-border);
+}
+
+.dmm-dialog-title {
+	margin: 0 !important;
+	font-size: 15px !important;
+	font-weight: 600 !important;
+	color: var(--dmm-text) !important;
+}
+
+.dmm-dialog-close {
+	background: none;
+	border: none;
+	font-size: 20px;
+	color: var(--dmm-muted-text);
+	cursor: pointer;
+}
+
+.dmm-dialog-body {
+	padding: 20px;
+	font-size: 13.5px;
+	color: var(--dmm-text);
+}
+
+.dmm-dialog-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 14px 20px;
+	border-top: 1px solid var(--dmm-border);
+	background: var(--dmm-bg);
+}
+
+/* ==========================================================================
+   11. TOAST NOTIFICATION
+   ========================================================================== */
+.dmm-toast {
+	position: fixed;
+	bottom: 24px;
+	right: 24px;
+	z-index: 999999;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 18px;
+	background: var(--dmm-primary);
+	color: var(--dmm-primary-fg);
+	border-radius: var(--dmm-radius-lg);
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.dmm-toast-error {
+	background: var(--dmm-danger);
+}

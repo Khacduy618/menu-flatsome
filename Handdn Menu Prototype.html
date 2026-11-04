@@ -1,0 +1,673 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Handdn Menu Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&display=swap">
+<style>
+/* Layout: quiet centered-logo header; a left drawer whose panels cascade sideways on desktop and drill down full-screen on mobile. */
+:root{
+  --paper:#ffffff; --ink:#1b1714; --muted:#716a62; --line:#e8e4de; --wash:#f6f4f1; --scrim:rgba(27,23,20,.36);
+  --font:"Jost","Futura","Century Gothic","Helvetica Neue",Arial,sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1); --ease-out:cubic-bezier(.16,1,.3,1);
+  --t-drawer:560ms; --t-panel:420ms; --t-item:360ms; --t-fade:300ms; --stagger:32ms;
+  --header-h:64px; --panel-w:clamp(320px,27vw,392px); --pad-x:40px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#131211; --ink:#f0ece6; --muted:#a59e95; --line:#2b2826; --wash:#1c1a18; --scrim:rgba(0,0,0,.58); color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#131211; --ink:#f0ece6; --muted:#a59e95; --line:#2b2826; --wash:#1c1a18; --scrim:rgba(0,0,0,.58); color-scheme:dark}
+@media (max-width:767px){:root{--header-h:56px; --panel-w:100vw; --pad-x:24px}}
+@media (prefers-reduced-motion:reduce){:root{--t-drawer:1ms; --t-panel:1ms; --t-item:1ms; --t-fade:1ms; --stagger:0ms}}
+
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--paper); color:var(--ink); font:400 15px/1.55 var(--font); -webkit-font-smoothing:antialiased}
+a{color:inherit; text-decoration:none}
+button{font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer}
+:focus-visible{outline:1px solid var(--ink); outline-offset:3px}
+body.hm-lock{overflow:hidden}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:30; background:var(--paper)}
+.skip{position:absolute; left:16px; top:-60px; background:var(--ink); color:var(--paper); padding:8px 14px; z-index:100}
+.skip:focus{top:8px}
+
+/* Announcement */
+.ann{height:34px; display:grid; place-items:center; background:var(--wash); font-size:12px; letter-spacing:.06em; color:var(--muted); overflow:hidden; position:relative;
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ann span{grid-area:1/1; transition:opacity var(--t-fade) var(--ease),transform var(--t-fade) var(--ease); text-align:center}
+.ann span:not(.on){opacity:0; transform:translateY(6px)}
+
+/* Header */
+.hdr{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; height:var(--header-h); background:var(--paper);
+  display:grid; grid-template-columns:1fr auto 1fr; align-items:center; border-bottom:1px solid transparent; transition:border-color var(--t-fade) var(--ease);
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hdr.scrolled{border-bottom-color:var(--line)}
+.hdr-l,.hdr-r{display:flex; align-items:center; gap:28px}
+.hdr-r{justify-content:flex-end; gap:22px}
+.hbtn{display:inline-flex; align-items:center; gap:10px; font-size:14px; letter-spacing:.02em; height:40px}
+.hbtn svg{width:20px; height:20px; flex:none}
+.logo{font-weight:500; font-size:19px; letter-spacing:.34em; padding-left:.34em}
+.bag{position:relative}
+.bag b{position:absolute; top:4px; right:-8px; font:500 10px/16px var(--font); min-width:16px; text-align:center; border-radius:8px; background:var(--ink); color:var(--paper); font-variant-numeric:tabular-nums}
+.u-txt{position:relative}
+.u-txt::after,.hm-link .lbl::after{content:""; position:absolute; left:0; right:0; bottom:-2px; height:1px; background:currentColor; transform:scaleX(0); transform-origin:right; transition:transform var(--t-item) var(--ease)}
+.hbtn:hover .u-txt::after{transform:scaleX(1); transform-origin:left}
+.only-d{display:inline-flex}
+@media (max-width:767px){.only-d{display:none!important}.hdr-l{gap:14px}.hdr-r{gap:14px}.logo{font-size:16px}}
+
+/* Page placeholder */
+main{padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); padding-block:72px 96px}
+.wrap{max-width:1080px; margin:0 auto; display:grid; gap:56px}
+.eyebrow{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted)}
+h1{font-weight:300; font-size:clamp(30px,4.4vw,52px); line-height:1.12; letter-spacing:-.01em; max-width:18ch; text-wrap:balance; margin:12px 0 18px}
+.lede{color:var(--muted); max-width:58ch; margin:0}
+.cta{display:inline-flex; margin-top:28px; gap:12px; flex-wrap:wrap}
+.cta button,.cta a{height:46px; padding:0 26px; display:inline-flex; align-items:center; border:1px solid var(--ink); font-size:14px; letter-spacing:.03em; border-radius:999px; transition:background var(--t-fade) var(--ease),color var(--t-fade) var(--ease)}
+.cta .solid{background:var(--ink); color:var(--paper)}
+.cta a:hover{background:var(--ink); color:var(--paper)}
+.spec{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:1px; background:var(--line); border-block:1px solid var(--line)}
+.spec div{background:var(--paper); padding:22px 20px 22px 0; min-width:0}
+.spec h3{font-size:11px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; margin:0 0 10px}
+.spec p{margin:0; color:var(--muted); font-size:13.5px}
+.spec code{font:12.5px/1.5 ui-monospace,Menlo,monospace; color:var(--ink)}
+
+/* Scrim */
+.scrim{position:fixed; inset:0; z-index:40; background:var(--scrim); opacity:0; visibility:hidden; transition:opacity var(--t-drawer) var(--ease),visibility 0s linear var(--t-drawer)}
+.scrim.on{opacity:1; visibility:visible; transition:opacity var(--t-drawer) var(--ease)}
+
+/* Drawer */
+.hm{position:fixed; inset:0 auto 0 0; z-index:50; width:0; pointer-events:none}
+.hm.on{pointer-events:auto}
+.hm-panel{position:absolute; top:0; bottom:0; left:calc(var(--lvl) * var(--panel-w)); width:var(--panel-w); background:var(--paper);
+  display:flex; flex-direction:column; overflow:hidden; visibility:hidden;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)}
+.hm-panel+.hm-panel{border-left:1px solid var(--line)}
+/* L1 slides from the left edge; deeper panels unfold from behind their parent */
+.hm-panel[data-lvl="0"]{z-index:10; transform:translateX(-100%); transition:transform var(--t-drawer) var(--ease-out),visibility 0s linear var(--t-drawer)}
+.hm.on .hm-panel[data-lvl="0"]{transform:none; visibility:visible; transition:transform var(--t-drawer) var(--ease-out)}
+.hm-panel:not([data-lvl="0"]){z-index:calc(10 - var(--lvl)); transform:translateX(-32px); opacity:0;
+  transition:transform var(--t-panel) var(--ease-out),opacity var(--t-panel) var(--ease),visibility 0s linear var(--t-panel)}
+.hm-panel.open:not([data-lvl="0"]){transform:none; opacity:1; visibility:visible; transition:transform var(--t-panel) var(--ease-out),opacity var(--t-panel) var(--ease)}
+
+.hm-top{flex:none; height:var(--header-h); display:flex; align-items:center; justify-content:space-between; gap:16px; padding:0 var(--pad-x)}
+.hm-close,.hm-back{display:inline-flex; align-items:center; gap:10px; height:40px; font-size:14px}
+.hm-close svg,.hm-back svg{width:18px; height:18px}
+.hm-back{display:none}
+.hm-panel:not([data-lvl="0"]) .hm-close{display:none}
+.vh{position:absolute!important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+.hm-title{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted)}
+.hm-scroll{flex:1; overflow-y:auto; overscroll-behavior:contain; padding:8px var(--pad-x) 40px; display:flex; flex-direction:column; gap:28px}
+.hm-group{display:flex; flex-direction:column}
+.hm-group h4{margin:0 0 6px; font-size:11px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+.hm-list{list-style:none; margin:0; padding:0}
+.hm-link{display:flex; width:100%; align-items:center; justify-content:space-between; gap:16px; padding:9px 0; text-align:left; font-size:15.5px; line-height:1.3; letter-spacing:.005em}
+.hm-link .lbl{position:relative}
+.hm-link:hover .lbl::after,.hm-link[aria-expanded="true"] .lbl::after{transform:scaleX(1); transform-origin:left}
+.hm-link .chev{width:14px; height:14px; flex:none; opacity:.55; transition:transform var(--t-item) var(--ease),opacity var(--t-item) var(--ease)}
+.hm-link[aria-expanded="true"] .chev{opacity:1; transform:translateX(3px)}
+.lvl0 .hm-list.primary .hm-link{font-size:19px; font-weight:300; padding:10px 0}
+.lvl0 .hm-list.secondary .hm-link{font-size:14.5px; color:var(--muted)}
+.lvl0 .hm-list.secondary .hm-link:hover,.lvl0 .hm-list.secondary .hm-link[aria-expanded="true"]{color:var(--ink)}
+.tag{font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-left:10px; vertical-align:2px}
+
+/* Staggered entrance of rows */
+.hm-panel .st{opacity:0; transform:translateX(-10px); transition:opacity var(--t-item) var(--ease),transform var(--t-item) var(--ease-out)}
+.hm-panel.open .st,.hm.on .lvl0 .st{opacity:1; transform:none; transition-delay:calc(140ms + var(--i,0) * var(--stagger))}
+
+/* Quick chips (mobile hybrid) and sizes grid */
+.chips{display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; margin:0 calc(var(--pad-x) * -1); padding:2px var(--pad-x)}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none; height:34px; padding:0 14px; display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; font-size:13px; white-space:nowrap; transition:border-color var(--t-fade) var(--ease)}
+.chip:hover{border-color:var(--ink)}
+.sizes{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; list-style:none; margin:4px 0 0; padding:0}
+.sizes a{display:flex; align-items:baseline; justify-content:center; padding-top:14px; height:48px; border:1px solid var(--line); font-size:14px; font-variant-numeric:tabular-nums; transition:border-color var(--t-fade) var(--ease),background var(--t-fade) var(--ease)}
+.sizes a:hover{border-color:var(--ink)}
+.sizes small{font-size:10px; color:var(--muted); margin-left:1px}
+.hint{font-size:13px; color:var(--muted); margin:10px 0 0}
+.hint a{text-decoration:underline; text-underline-offset:3px}
+
+.feature{display:block; background:var(--wash); margin-top:auto; overflow:hidden}
+.feature .ph{height:132px}
+.feature .ft{display:block; padding:18px 22px 22px}
+.feature .k{font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted)}
+.feature p{margin:8px 0 14px; font-size:17px; font-weight:300; line-height:1.35}
+.feature span.go{font-size:13px; border-bottom:1px solid currentColor; padding-bottom:2px}
+
+/* Image surfaces: leather swatches are painted on canvas at runtime (stand-ins until real photography is dropped in via data-img) */
+.ph{position:relative; display:block; background:#3a2a20 center/cover no-repeat; overflow:hidden}
+.ph img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover}
+.ph::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.42)); pointer-events:none}
+.ph.zoom{transition:transform 1.2s var(--ease-out)}
+a:hover > .ph.zoom,a:hover .ph.zoom{transform:scale(1.035)}
+
+/* Level-1 promo: fills the empty space under the list on mobile and desktop */
+.hm-promo{display:block; margin-top:auto; position:relative; color:#f6f1ea}
+.hm-promo .ph{aspect-ratio:16/10; max-width:100%}
+.hm-promo .cap{position:absolute; left:18px; right:18px; bottom:16px; z-index:1; display:grid; gap:4px}
+.hm-promo .cap .k{font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; opacity:.82}
+.hm-promo .cap b{font-weight:400; font-size:18px; line-height:1.25}
+.hm-promo .cap .go{font-size:12.5px; margin-top:6px; text-decoration:underline; text-underline-offset:4px}
+.hm-promo svg.strap{position:absolute; left:10%; right:10%; top:22%; width:80%; height:auto; color:rgba(246,241,234,.85); z-index:1}
+
+/* Trustpilot line: quiet, typographic */
+.tp{display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--muted); width:100%}
+.tp .stars{display:inline-flex; gap:2px; color:var(--ink)}
+.tp .stars svg{width:12px; height:12px}
+.tp strong{font-weight:500; color:var(--ink); font-variant-numeric:tabular-nums}
+.tp:hover .u{color:var(--ink); text-decoration:underline; text-underline-offset:3px}
+
+/* Desktop editorial pane: fills whatever width the open panels leave, LV-style */
+.hm-visual{position:fixed; top:0; bottom:0; right:0; z-index:49; left:var(--vis-left,100%); opacity:0; visibility:hidden; color:#f6f1ea;
+  transition:opacity var(--t-panel) var(--ease),left var(--t-panel) var(--ease-out),visibility 0s linear var(--t-panel)}
+.hm-visual.on{opacity:1; visibility:visible; transition:opacity var(--t-panel) var(--ease) 120ms,left var(--t-panel) var(--ease-out)}
+.hm-visual a{position:absolute; inset:0; display:block}
+.hm-visual .ph{position:absolute; inset:0; transition:opacity 520ms var(--ease)}
+.hm-visual .ph.out{opacity:0}
+.hm-visual .cap{position:absolute; left:32px; right:32px; bottom:calc(32px + env(safe-area-inset-bottom,0px)); z-index:2; display:grid; gap:6px; max-width:34ch; transition:opacity 300ms var(--ease),transform 420ms var(--ease-out)}
+.hm-visual .cap.swap{opacity:0; transform:translateY(8px)}
+.hm-visual .k{font-size:11px; letter-spacing:.16em; text-transform:uppercase; opacity:.82}
+.hm-visual b{font-weight:300; font-size:clamp(18px,1.6vw,24px); line-height:1.25; text-wrap:balance}
+.hm-visual .go{font-size:13px; margin-top:8px; text-decoration:underline; text-underline-offset:4px}
+@media (max-width:767px){.hm-visual{display:none}}
+
+.hm-foot{flex:none; border-top:1px solid var(--line); padding:16px var(--pad-x) 18px; display:flex; flex-wrap:wrap; gap:8px 20px; font-size:13px; color:var(--muted)}
+.hm-foot .tp{padding-bottom:10px; margin-bottom:2px; border-bottom:1px solid var(--line)}
+.hm-foot a:hover{color:var(--ink)}
+.only-m{display:none}
+
+/* Mobile: full-screen drill-down */
+@media (max-width:767px){
+  .only-m{display:flex}
+  .hm-panel{left:0}
+  .hm-panel[data-lvl="0"]{z-index:0}
+  .hm-panel+.hm-panel{border-left:0}
+  .hm-panel:not([data-lvl="0"]){z-index:calc(1 + var(--lvl)); transform:translateX(100%); opacity:1}
+  .hm-panel.open:not([data-lvl="0"]){transform:none}
+  .hm-panel.behind{transform:translateX(-24%)!important; transition:transform var(--t-panel) var(--ease-out)}
+  .hm-panel.behind .hm-scroll{opacity:.4; transition:opacity var(--t-panel) var(--ease)}
+  .hm-panel:not([data-lvl="0"]) .hm-back{display:inline-flex}
+  .hm-panel .st{transform:translateX(12px)}
+  .lvl0 .hm-list.primary .hm-link{font-size:22px; padding:11px 0}
+  .hm-link{padding:12px 0; font-size:16.5px}
+}
+
+/* Search sheet */
+.srch{position:fixed; inset:0 0 auto 0; z-index:60; background:var(--paper); transform:translateY(-100%); visibility:hidden;
+  transition:transform var(--t-drawer) var(--ease-out),visibility 0s linear var(--t-drawer);
+  padding:calc(env(safe-area-inset-top,0px) + 16px) max(16px,env(safe-area-inset-right,0px)) 36px max(16px,env(safe-area-inset-left,0px))}
+.srch.on{transform:none; visibility:visible; transition:transform var(--t-drawer) var(--ease-out)}
+.srch-in{max-width:760px; margin:0 auto; display:grid; gap:22px}
+.srch-row{display:flex; justify-content:flex-end}
+.srch form{display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--ink); padding-bottom:10px}
+.srch input{flex:1; min-width:0; border:0; background:none; color:var(--ink); font:300 clamp(20px,3vw,28px)/1.2 var(--font); outline:none}
+.srch input::placeholder{color:var(--muted)}
+.srch svg{width:20px; height:20px; flex:none}
+.srch .sugg{display:flex; flex-wrap:wrap; gap:10px 26px; font-size:15px}
+.srch .sugg a{position:relative}
+.srch .sugg a:hover{text-decoration:underline; text-underline-offset:4px}
+</style>
+
+<a class="skip" href="#main">Skip to main content</a>
+
+<div class="ann" aria-label="Store announcements">
+  <span class="on">Free worldwide shipping on orders over $450</span>
+  <span>Returns and refunds accepted within 30 days</span>
+</div>
+
+<header class="hdr" id="hdr">
+  <div class="hdr-l">
+    <button class="hbtn" id="menuBtn" aria-expanded="false" aria-controls="hm" aria-haspopup="dialog">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M2 6h16M2 14h16"/></svg>
+      <span class="u-txt only-d">Menu</span>
+    </button>
+    <button class="hbtn" id="searchBtn" aria-expanded="false" aria-controls="srch">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 5 5"/></svg>
+      <span class="u-txt only-d">Search</span>
+    </button>
+  </div>
+  <a class="logo" href="https://handdn.com/" aria-label="HANDDN home">HANDDN</a>
+  <div class="hdr-r">
+    <a class="hbtn only-d" href="https://handdn.com/support-center/how-to-measure-exactly-watch-strap/"><span class="u-txt">Size Guide</span></a>
+    <a class="hbtn" href="https://handdn.com/my-account/" aria-label="Account">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><circle cx="10" cy="7" r="3.5"/><path d="M3.5 18c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5"/></svg>
+    </a>
+    <a class="hbtn bag" href="https://handdn.com/cart/" aria-label="Cart, 2 items">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M3.5 6.5h13l-1 11h-11z"/><path d="M7 6.5V5a3 3 0 0 1 6 0v1.5"/></svg>
+      <b aria-hidden="true">2</b>
+    </a>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap">
+    <section>
+      <div class="eyebrow">Menu prototype · open it from the header</div>
+      <h1>Bespoke watch straps, cut from the cleanest part of the hide.</h1>
+      <p class="lede">Handdn designs bespoke watchstraps from a wide range of leathers. This page shows only the new navigation: a quiet header, a drawer that cascades on desktop and drills down on mobile, and search as its own sheet. Every link points to the live handdn.com.</p>
+      <div class="cta">
+        <button class="solid" type="button" data-open-menu>Open the menu</button>
+        <button type="button" data-open-menu="p-straps">Jump to Watch Straps</button>
+      </div>
+    </section>
+    <section class="spec" aria-label="Design notes">
+      <div><h3>Motion</h3><p>Drawer <code>560ms</code>, panels <code>420ms</code> on <code>cubic-bezier(.16,1,.3,1)</code>. Rows fade in with a <code>32ms</code> stagger. All of it collapses to instant with reduced motion.</p></div>
+      <div><h3>Spacing</h3><p>Header <code>64px</code> (56 on mobile). Panels <code>clamp(320px, 27vw, 392px)</code> wide with <code>40px</code> side padding. Rows sit on a <code>9 to 12px</code> rhythm.</p></div>
+      <div><h3>Type</h3><p>One geometric sans in three weights. Level 1 at <code>19px / 300</code>, level 2 at <code>15.5px</code>, group labels at <code>11px</code> uppercase, tracked <code>.14em</code>.</p></div>
+      <div><h3>Keyboard</h3><p><code>Arrows</code> move and open, <code>Esc</code> steps back one level, then closes. Focus is trapped in the drawer and returns to the Menu button.</p></div>
+    </section>
+  </div>
+</main>
+
+<div class="scrim" id="scrim" aria-hidden="true"></div>
+<nav class="hm" id="hm" role="dialog" aria-modal="true" aria-label="Main menu"></nav>
+
+<div class="srch" id="srch" role="dialog" aria-modal="true" aria-label="Search">
+  <div class="srch-in">
+    <div class="srch-row"><button class="hm-close" id="srchClose" type="button"><span>Close</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="m4 4 12 12M16 4 4 16"/></svg></button></div>
+    <form action="https://handdn.com/" method="get" target="_blank" role="search">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 5 5"/></svg>
+      <label for="q" class="vh">Search straps</label>
+      <input id="q" name="s" type="search" placeholder="Search leathers, styles, sizes" autocomplete="off">
+      <input type="hidden" name="post_type" value="product">
+    </form>
+    <div>
+      <div class="eyebrow" style="margin-bottom:12px">Popular</div>
+      <div class="sugg" id="popular"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+const B = 'https://handdn.com';
+const L = (label, path, extra) => Object.assign({ label, href: path.startsWith('http') ? path : B + path }, extra);
+const leather = s => '/attribute/leather/' + s + '/';
+
+const MENU = {
+  primary: [
+    { id: 'p-straps', label: 'Watch Straps', groups: [
+      { items: [ L('All watch straps', '/shop/'), L('In stock, ready to ship', '/shop/available-straps/'), L('Leather collection', '/shop/collection-leather/') ] },
+      { title: 'By material', items: [
+        { id: 'p-exotic', label: 'Exotic leathers', groups: [{ items: [
+          L('All exotic leathers', '/shop/exotic-leather-watch-straps/'),
+          L('Alligator', leather('alligator')), L('Double Hornback Alligator', leather('double-hornback-alligator')),
+          L('Black Diamond', leather('black-diamond-watch-straps')), L('Shell Cordovan', leather('shell-cordovan')),
+          L('Stingray', leather('stingray')), L('Snake Sea', leather('snake-sea')), L('Lizard', leather('lizard')),
+          L('Ostrich', leather('ostrich')), L('Ostrich Leg', leather('ostrich-leg-watch-straps')), L('Peccary', leather('peccary')),
+          L('Python', leather('python-leather')), L('Shark', leather('shark')) ] }] },
+        { id: 'p-regular', label: 'Regular leathers', groups: [
+          { items: [ L('All regular leathers', '/shop/regular-leather-watch-straps/') ] },
+          { title: 'Calfskin', items: [
+            L('Box Calfskin', leather('box-calfskin')), L('Smooth Calf', leather('smooth-calf')), L('Babele', leather('babele')),
+            L('Epsom', leather('epsom')), L('Epi', leather('epi')), L('Saffiano', leather('saffiano')), L('Swift', leather('swift')),
+            L('Togo', leather('togo')), L('Maya', leather('maya')), L('Vachetta', leather('vachetta')), L('Nubuck', leather('nubuck')),
+            L('Waxed', leather('waxed')), L('Suede', leather('suede')), L('Crazy Horse', leather('crazy-horse')) ] },
+          { title: 'Tanneries', items: [
+            L('Badalassi Carlo Waxed', leather('badalassi-carlo-waxed')), L('Badalassi Carlo Pueblo', leather('badalassi-carlo-pueblo')),
+            L('Badalassi Carlo Habana', leather('habana')), L('Alran Chevre Sully', leather('alran-chevre-sully')),
+            L('Alran Chevre Fat Nat', leather('alran-chevre-fat-nat')), L('Handdn Signature Patina', leather('vegetable-tanned')) ] } ] },
+        { id: 'p-nonleather', label: 'Non-leathers', groups: [{ items: [
+          L('All non-leather straps', '/shop/non-leather-watch-straps/'), L('Alcantara', leather('alcantara')),
+          L('Canvas / Sailcloth', leather('canvas')), L('Sailcloth Rubber', leather('sailcloth-rubber')) ] }] } ] },
+      { title: 'By fit', items: [
+        { id: 'p-styles', label: 'Strap styles', groups: [
+          { items: [ L('All strap styles', '/shop/watch-strap-style/') ] },
+          { title: 'Construction', items: [ L('Classic', '/shop/classic-watch-straps/'), L('Vintage', '/shop/vintage-watch-straps/'),
+            L('Curved End', '/shop/curved-end-watch-strap/'), L('Folded Edge', '/shop/folded-edge-watch-strap/'), L('Fixed Bars', '/shop/fixed-bars/'),
+            L('Single Folding', '/shop/single-folding-watch-straps/'), L('Bund Strap', '/shop/bund-strap/'), L('Pilot Strap', '/shop/pilot-watch-strap/'),
+            L('Rally', '/shop/rally-watch-straps/'), L('NATO', '/shop/nato-watch-strap/') ] },
+          { title: 'Color and finish', items: [ L('Duocolor', '/product-tag/doucolor/'), L('Tricolor', '/product-tag/tricolor/'),
+            L('National Flag', '/shop/national-flag/'), L('Patina Veg-Tanned', '/shop/patina-style/') ] } ] },
+        { id: 'p-brands', label: 'By watch brand', groups: [
+          { title: 'Apple Watch', items: [ L('All Apple Watch bands', '/shop/apple-watch-straps/'), L('Apple Watch Ultra', '/shop/apple-watch-ultra-band/'), L('Apple Watch Series', '/shop/apple-watch-series-band/') ] },
+          { title: 'Other brands', items: [ L('Samsung Watch', '/shop/samsung-watch-bands/'), L('Baltic', '/shop/baltic-watch-strap/'), L('Panerai (PAM)', '/shop/panerai-style-watch-straps/') ] } ] },
+        { id: 'p-size', label: 'Shop by lug width', kind: 'sizes' } ] } ],
+      feature: { tex: 'smooth', tone: '#6b3b20', k: 'Leather collection', text: 'Every leather we cut, from Epsom to shell cordovan.', href: B + '/shop/collection-leather/', go: 'Browse leathers' } },
+    { id: 'p-bespoke', label: 'Bespoke', groups: [
+      { items: [ L('3D custom watch strap', '/product/3d-custom-watch-strap/', { tag: 'Must try' }), L('Custom watch strap', '/product/bespoke-watch-strap/'),
+        L('Custom Apple Watch band', '/product/custom-apple-watch-bands/'), L('Custom PAM strap', '/product/custom-pam-strap/') ] },
+      { title: 'Before you order', items: [ L('Customer bespoke straps', '/shop/customer-bespoke-straps/'), L('How to measure', '/support-center/how-to-measure-exactly-watch-strap/') ] } ],
+      feature: { tex: 'scales', tone: '#3b2416', k: 'Craft', text: 'Saddle-stitched by hand and checked three times before it ships.', href: B + '/craftsmanship-story/', go: 'Read the process' } },
+    { id: 'p-apple', label: 'Apple Watch Bands', groups: [
+      { items: [ L('All Apple Watch bands', '/shop/apple-watch-straps/'), L('Apple Watch Ultra', '/shop/apple-watch-ultra-band/'),
+        L('Apple Watch Series', '/shop/apple-watch-series-band/'), L('Custom Apple Watch band', '/product/custom-apple-watch-bands/') ] } ] },
+    L('In Stock', '/shop/available-straps/'),
+    { id: 'p-gifts', label: 'Gifts', groups: [{ items: [ L('All gifts', '/shop/gift/'), L('Gift card', '/shop/gift-card/') ] }] }
+  ],
+  secondary: [
+    { id: 'p-discover', label: 'Discover Handdn', groups: [{ items: [
+      L('About Handdn', '/about-us/'), L('Craftsmanship stories', '/craftsmanship-story/'), L('Journal', '/blog/'),
+      L('Customer feedback', '/handdn-feedback/'), L('Trustpilot reviews', 'https://www.trustpilot.com/review/handdn.com') ] },
+      { title: 'Partner with us', items: [ L('Affiliate program', '/affiliate-program/'), L('Ambassador program', '/handdn-ambassador/') ] } ] },
+    { id: 'p-service', label: 'Client Services', groups: [{ items: [
+      L('Size guide', '/support-center/how-to-measure-exactly-watch-strap/'), L('Track your order', '/my-account/track-order/'),
+      L('FAQ', '/help-faqs/'), L('Shipping and delivery', '/shipping-delivery/'), L('Returns and refunds', '/return-refund/'), L('Contact us', '/contact/') ] }] }
+  ],
+  visuals: {
+    'p-root':      { tex: 'grain',  tone: '#8a4a26', k: '3D Custom', t: 'Design your strap in 3D, then we cut and stitch it by hand.', go: 'Start designing', href: B + '/product/3d-custom-watch-strap/' },
+    'p-straps':    { tex: 'grain',  tone: '#6b3b20', k: 'Watch Straps', t: 'Hand-cut from the cleanest, most even-grained part of the hide.', go: 'Shop all straps', href: B + '/shop/' },
+    'p-exotic':    { tex: 'scales', tone: '#3b2416', k: 'Exotic leathers', t: '440 straps in alligator, ostrich, stingray and more.', go: 'Shop exotic leathers', href: B + '/shop/exotic-leather-watch-straps/' },
+    'p-regular':   { tex: 'grain',  tone: '#1f2a3d', k: 'Regular leathers', t: 'Calfskin from Badalassi Carlo, Alran and Handdn patina.', go: 'Shop regular leathers', href: B + '/shop/regular-leather-watch-straps/' },
+    'p-nonleather':{ tex: 'weave',  tone: '#4b4f36', k: 'Non-leathers', t: 'Alcantara, canvas and sailcloth for lighter wear.', go: 'Shop non-leathers', href: B + '/shop/non-leather-watch-straps/' },
+    'p-styles':    { tex: 'smooth', tone: '#9a6234', k: 'Strap styles', t: 'Classic, curved end, bund, rally and NATO.', go: 'See every style', href: B + '/shop/watch-strap-style/' },
+    'p-brands':    { tex: 'grain',  tone: '#1d1b1a', k: 'By watch brand', t: '351 Apple Watch bands, plus Panerai, Baltic and Samsung.', go: 'Shop Apple Watch', href: B + '/shop/apple-watch-straps/' },
+    'p-size':      { tex: 'smooth', tone: '#b07a3a', k: 'Lug width', t: 'Every strap from 14 to 26mm, in 1mm steps.', go: 'How to measure', href: B + '/support-center/how-to-measure-exactly-watch-strap/' },
+    'p-bespoke':   { tex: 'scales', tone: '#5a2f1b', k: 'Bespoke', t: '151 customer bespoke straps to start your own from.', go: 'See the gallery', href: B + '/shop/customer-bespoke-straps/' },
+    'p-apple':     { tex: 'grain',  tone: '#2a2624', k: 'Apple Watch Bands', t: 'Leather bands for Ultra and Series, made to order.', go: 'Shop Apple Watch', href: B + '/shop/apple-watch-straps/' },
+    'p-gifts':     { tex: 'smooth', tone: '#5c1f24', k: 'Gifts', t: 'Gift cards and straps ready to give.', go: 'Shop gifts', href: B + '/shop/gift/' },
+    'p-discover':  { tex: 'grain',  tone: '#7a5a3a', k: 'Discover Handdn', t: 'Rated 4.7 by 619 reviewers on Trustpilot.', go: 'Read our story', href: B + '/about-us/' },
+    'p-service':   { tex: 'smooth', tone: '#22304a', k: 'Client Services', t: 'Free worldwide shipping over $450. Returns within 30 days.', go: 'Contact us', href: B + '/contact/' }
+  },
+  quick: [ L('3D Custom', '/product/3d-custom-watch-strap/'), L('In stock', '/shop/available-straps/'), L('Alligator', leather('alligator')),
+    L('Apple Watch', '/shop/apple-watch-straps/'), L('20mm', '/attribute/lug-width/20mm/'), L('Size guide', '/support-center/how-to-measure-exactly-watch-strap/') ]
+};
+
+/* ---------- render ---------- */
+const hm = document.getElementById('hm');
+const icon = {
+  chev: '<svg class="chev" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="m5 2.5 4.5 4.5L5 11.5"/></svg>',
+  back: '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M11 3.5 5.5 9l5.5 5.5"/></svg>',
+  close: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="m4 4 12 12M16 4 4 16"/></svg>',
+  strap: '<svg viewBox="0 0 320 56" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true"><rect x="2" y="16" width="134" height="24" rx="2"/><rect x="184" y="16" width="134" height="24" rx="12"/><rect x="138" y="10" width="44" height="36" rx="10"/><path stroke-dasharray="3 4" d="M10 22h118M10 34h118M192 22h110M192 34h110"/><circle cx="230" cy="28" r="1.8"/><circle cx="252" cy="28" r="1.8"/><circle cx="274" cy="28" r="1.8"/></svg>'
+};
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let idx = 0;
+const row = (n) => {
+  const i = idx++;
+  const tag = n.tag ? `<span class="tag">${esc(n.tag)}</span>` : '';
+  if (n.id) return `<li class="st" style="--i:${i}"><button class="hm-link" type="button" aria-expanded="false" aria-controls="${n.id}" data-target="${n.id}"><span class="lbl">${esc(n.label)}</span>${icon.chev}</button></li>`;
+  const ext = n.href.includes('handdn.com') ? '' : ' rel="noopener"';
+  return `<li class="st" style="--i:${i}"><a class="hm-link" href="${n.href}"${ext}><span><span class="lbl">${esc(n.label)}</span>${tag}</span></a></li>`;
+};
+const panels = [];
+function panel(id, lvl, title, body, foot) {
+  panels.push(`<section class="hm-panel lvl${lvl}" id="${id}" data-lvl="${lvl}" style="--lvl:${lvl}" aria-label="${esc(title)}">
+    <div class="hm-top">
+      <button class="hm-back" type="button" data-back>${icon.back}<span>Back</span></button>
+      <span class="hm-title"${lvl ? '' : ' hidden'}>${esc(title)}</span>
+      <button class="hm-close" type="button" data-close><span>Close</span>${icon.close}</button>
+    </div>
+    <div class="hm-scroll">${body}</div>${foot || ''}</section>`);
+}
+function build(node, lvl) {
+  idx = 0;
+  let body = '';
+  if (node.kind === 'sizes') {
+    const sizes = Array.from({ length: 13 }, (_, k) => 14 + k);
+    body = `<div class="hm-group"><h4 class="st" style="--i:0">Lug width</h4><ul class="sizes">${sizes.map((s, k) =>
+      `<li class="st" style="--i:${k + 1}"><a href="${B}/attribute/lug-width/${s}mm/" aria-label="${s} millimeter straps">${s}<small>mm</small></a></li>`).join('')}</ul>
+      <p class="hint st" style="--i:14">Not sure? <a href="${B}/support-center/how-to-measure-exactly-watch-strap/">Measure your lugs</a> in two minutes.</p></div>`;
+  } else {
+    body = node.groups.map(g => `<div class="hm-group">${g.title ? `<h4 class="st" style="--i:${idx++}">${esc(g.title)}</h4>` : ''}<ul class="hm-list">${g.items.map(row).join('')}</ul></div>`).join('');
+    if (node.feature) {
+      const f = node.feature;
+      body += `<a class="feature st only-m-feature" style="--i:${idx++}" href="${f.href}"><span class="ph zoom" data-tex="${f.tex}" data-tone="${f.tone}"></span><span class="ft"><span class="k">${esc(f.k)}</span><p>${esc(f.text)}</p><span class="go">${esc(f.go)}</span></span></a>`;
+    }
+  }
+  panel(node.id, lvl, node.label, body);
+  (node.groups || []).forEach(g => g.items.forEach(c => c.id && build(c, lvl + 1)));
+}
+// Level 1
+idx = 0;
+const rv = MENU.visuals['p-root'];
+const l1 = `  <ul class="hm-list primary">${MENU.primary.map(row).join('')}</ul>
+  <ul class="hm-list secondary">${MENU.secondary.map(row).join('')}</ul>
+  <a class="hm-promo st" style="--i:${idx++}" href="${rv.href}"><span class="ph zoom" data-tex="${rv.tex}" data-tone="${rv.tone}"></span>${icon.strap.replace('<svg ', '<svg class="strap" ')}
+    <span class="cap"><span class="k">${rv.k}</span><b>${esc(rv.t)}</b><span class="go">${rv.go}</span></span></a>`;
+const star = '<svg viewBox="0 0 12 12" aria-hidden="true"><path fill="currentColor" d="M6 .8l1.6 3.4 3.7.4-2.8 2.5.8 3.7L6 8.9 2.7 10.8l.8-3.7L.7 4.6l3.7-.4z"/></svg>';
+const tp = `<a class="tp" href="https://www.trustpilot.com/review/handdn.com" rel="noopener" aria-label="Rated 4.7 out of 5, Excellent, from 619 reviews on Trustpilot"><span class="stars">${star.repeat(5)}</span><span><strong>4.7</strong> Excellent</span><span class="u">619 reviews on Trustpilot</span></a>`;
+const foot = `<div class="hm-foot">${tp}<a href="${B}/my-account/">Sign in or register</a><a href="${B}/my-account/track-order/">Track order</a><a href="${B}/contact/">Contact</a><a href="https://www.instagram.com/handdn.store/" rel="noopener">Instagram</a></div>`;
+panel('p-root', 0, 'Menu', l1, foot);
+[...MENU.primary, ...MENU.secondary].forEach(n => n.id && build(n, 1));
+hm.innerHTML = panels.join('');
+hm.insertAdjacentHTML('afterend', `<aside class="hm-visual" id="hmVis" aria-hidden="true"><a href="#" tabindex="-1"><span class="ph" data-layer="a"></span><span class="ph out" data-layer="b"></span><span class="cap"><span class="k"></span><b></b><span class="go"></span></span></a></aside>`);
+
+/* ---------- leather swatches (canvas) ---------- */
+// Stand-in imagery so the prototype has texture without third-party assets.
+// In production give any .ph a data-img="https://cdn.handdn.com/..." and the photo wins.
+const texCache = new Map();
+function rng(seed) { let x = seed || 1; return () => (x = (x * 16807) % 2147483647) / 2147483647; }
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16), c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.max(0, Math.min(255, Math.round(f >= 0 ? v + (255 - v) * f : v * (1 + f)))));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+function swatch(tex, tone, w = 720, h = 900) {
+  const key = tex + tone + w + 'x' + h;
+  if (texCache.has(key)) return texCache.get(key);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'), r = rng(tone.length * 991 + tex.length * 7 + parseInt(tone.slice(1), 16) % 9973);
+  g.fillStyle = tone; g.fillRect(0, 0, w, h);
+  if (tex === 'scales') {
+    let y = -10;
+    while (y < h) {
+      const rh = 16 + r() * 22; let x = -r() * 30;
+      while (x < w) {
+        const rw = 18 + r() * 34;
+        g.fillStyle = shade(tone, (r() - .5) * .1);
+        g.beginPath(); g.roundRect(x + 1.5, y + 1.5, rw - 3, rh - 3, Math.min(rw, rh) * .24); g.fill();
+        g.strokeStyle = 'rgba(0,0,0,.34)'; g.lineWidth = 1.4; g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x + 8, y + 6); g.lineTo(x + rw - 10, y + 6); g.stroke();
+        x += rw;
+      }
+      y += rh;
+    }
+  } else if (tex === 'dots') {
+    for (let i = 0; i < w * h / 40; i++) { const x = r() * w, y = r() * h, rad = 1.2 + r() * 1.4; g.fillStyle = shade(tone, .05 + r() * .1); g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill(); }
+  } else if (tex === 'quill') {
+    for (let i = 0; i < w * h / 2600; i++) { const x = r() * w, y = r() * h, rad = 4 + r() * 6;
+      const gr = g.createRadialGradient(x - 2, y - 2, 0, x, y, rad); gr.addColorStop(0, shade(tone, .25)); gr.addColorStop(1, shade(tone, -.25));
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill(); }
+  } else if (tex === 'weave') {
+    for (let y = 0; y < h; y += 6) for (let x = 0; x < w; x += 6) { g.fillStyle = ((x + y) / 6) % 2 ? shade(tone, .06) : shade(tone, -.08); g.fillRect(x, y, 6, 3); g.fillRect(x + ((y / 6) % 2 ? 3 : 0), y + 3, 3, 3); }
+  } else if (tex === 'cross') {
+    g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = 1;
+    for (let i = -h; i < w; i += 5) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + h, h); g.stroke(); g.beginPath(); g.moveTo(i + h, 0); g.lineTo(i, h); g.stroke(); }
+  }
+  if (tex !== 'weave') { // pebble grain on everything leather
+    const amt = tex === 'smooth' ? w * h / 60 : w * h / 18;
+    for (let i = 0; i < amt; i++) { g.fillStyle = r() > .5 ? 'rgba(255,255,255,.035)' : 'rgba(0,0,0,.07)'; g.fillRect(r() * w, r() * h, 1 + r() * 2, 1 + r() * 2); }
+  }
+  // soft studio light from the top left and a saddle-stitched edge
+  const lg = g.createLinearGradient(0, 0, w, h); lg.addColorStop(0, 'rgba(255,240,220,.16)'); lg.addColorStop(.55, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(0,0,0,.38)');
+  g.fillStyle = lg; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(w - 46, 0, 46, h);
+  g.strokeStyle = 'rgba(246,236,220,.75)'; g.lineWidth = 2.4; g.setLineDash([9, 7]);
+  g.beginPath(); g.moveTo(w - 66, 0); g.lineTo(w - 66, h); g.stroke(); g.setLineDash([]);
+  const url = c.toDataURL('image/jpeg', .82); texCache.set(key, url); return url;
+}
+function paint(el, v) {
+  if (!el) return;
+  if (el.dataset.img) { el.innerHTML = `<img src="${el.dataset.img}" alt="" loading="lazy" decoding="async">`; return; }
+  el.style.backgroundImage = `url(${swatch(v.tex, v.tone)})`;
+}
+function paintAll(scope) { scope.querySelectorAll('.ph[data-tex]').forEach(el => { if (!el.dataset.done) { paint(el, { tex: el.dataset.tex, tone: el.dataset.tone }); el.dataset.done = 1; } }); }
+
+
+/* ---------- behaviour ---------- */
+const $ = s => document.querySelector(s);
+const root = document.getElementById('p-root');
+const scrim = $('#scrim'), menuBtn = $('#menuBtn'), page = [$('#main'), $('#hdr'), $('.ann')];
+const mqMobile = matchMedia('(max-width: 767px)');
+const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
+let stack = [];          // open panel ids below root
+let isOpen = false;
+let lastFocus = null;
+
+const trig = id => hm.querySelector(`[data-target="${id}"]`);
+const panelOf = el => el.closest('.hm-panel');
+const lvlOf = id => +document.getElementById(id).dataset.lvl;
+
+function render() {
+  hm.querySelectorAll('.hm-panel:not(#p-root)').forEach(p => {
+    const k = stack.indexOf(p.id);
+    p.classList.toggle('open', k > -1);
+    p.classList.toggle('behind', k > -1 && k < stack.length - 1);
+    p.toggleAttribute('inert', k === -1 || (mqMobile.matches && k < stack.length - 1));
+  });
+  root.classList.toggle('behind', stack.length > 0);
+  root.toggleAttribute('inert', mqMobile.matches && stack.length > 0);
+  hm.querySelectorAll('[data-target]').forEach(b => b.setAttribute('aria-expanded', stack.includes(b.dataset.target)));
+  showVisual(stack[stack.length - 1] || 'p-root');
+}
+
+/* Desktop editorial pane follows the deepest open panel; hovering a leather swaps the swatch. */
+const vis = document.getElementById('hmVis'), visA = vis.querySelector('a'), visCap = vis.querySelector('.cap');
+let visKey = '', front = 'a', leafT;
+const LEATHER_TEX = [[/hornback|alligator|black diamond|snake|lizard|python|ostrich leg/i, 'scales'], [/stingray/i, 'dots'], [/ostrich|peccary/i, 'quill'],
+  [/saffiano|epi/i, 'cross'], [/canvas|sailcloth|alcantara/i, 'weave'], [/shell|box|smooth|vachetta|swift|patina|habana|pueblo/i, 'smooth']];
+const TONES = ['#3b2416', '#6b3b20', '#1d1b1a', '#22304a', '#5c1f24', '#4b4f36', '#8a4a26', '#b07a3a'];
+function leafVisual(a, base) {
+  const label = a.textContent.trim();
+  const tex = (LEATHER_TEX.find(([re]) => re.test(label)) || [0, 'grain'])[1];
+  const tone = TONES[[...label].reduce((s, ch) => s + ch.charCodeAt(0), 0) % TONES.length];
+  return { tex, tone, k: base.k, t: label, go: 'Shop ' + label, href: a.href };
+}
+function setVisual(v, key) {
+  if (key === visKey) return; visKey = key;
+  const next = front === 'a' ? 'b' : 'a';
+  const nEl = vis.querySelector(`[data-layer="${next}"]`), fEl = vis.querySelector(`[data-layer="${front}"]`);
+  paint(nEl, v); nEl.classList.remove('out'); fEl.classList.add('out'); front = next;
+  visCap.classList.add('swap');
+  setTimeout(() => { visCap.querySelector('.k').textContent = v.k; visCap.querySelector('b').textContent = v.t; visCap.querySelector('.go').textContent = v.go; visCap.classList.remove('swap'); }, 180);
+  visA.href = v.href;
+}
+function showVisual(id) {
+  const open = stack.length + 1;
+  const left = open * hm.querySelector('.hm-panel').getBoundingClientRect().width;
+  const room = innerWidth - left;
+  const on = isOpen && !mqMobile.matches && room >= 220 && id !== 'p-root';
+  vis.style.setProperty('--vis-left', left + 'px');
+  vis.classList.toggle('on', on);
+  if (on) setVisual(MENU.visuals[id] || MENU.visuals['p-root'], id);
+}
+hm.addEventListener('pointerover', e => {
+  if (mqMobile.matches) return;
+  const a = e.target.closest('a.hm-link'); clearTimeout(leafT);
+  const p = a && panelOf(a);
+  if (!a || !p || !/p-(exotic|regular|nonleather)/.test(p.id)) return;
+  leafT = setTimeout(() => setVisual(leafVisual(a, MENU.visuals[p.id]), a.href), 90);
+});
+vis.addEventListener('click', e => { if (!e.target.closest('.cap')) { /* image itself is a link */ } });
+addEventListener('resize', () => isOpen && render());
+function firstLink(p) { return p.querySelector('.hm-scroll a, .hm-scroll button'); }
+function focusLater(el) { if (el) setTimeout(() => el.focus({ preventScroll: true }), mqMobile.matches ? 60 : 0); }
+
+function openPanel(id, moveFocus) {
+  const lvl = lvlOf(id);
+  stack = stack.slice(0, lvl - 1).concat(id);
+  const p = document.getElementById(id);
+  p.querySelector('.hm-scroll').scrollTop = 0;
+  render();
+  if (moveFocus) focusLater(firstLink(p));
+}
+function back(focus = true) {
+  const id = stack.pop();
+  render();
+  if (focus && id) focusLater(trig(id));
+}
+function openMenu(target) {
+  if (isOpen) return target && openPanel(target, true);
+  isOpen = true; lastFocus = document.activeElement;
+  closeSearch(false);
+  hm.classList.add('on'); scrim.classList.add('on'); document.body.classList.add('hm-lock');
+  page.forEach(el => el.setAttribute('inert', ''));
+  menuBtn.setAttribute('aria-expanded', 'true');
+  paintAll(hm);
+  stack = []; render();
+  if (target) openPanel(target, true); else focusLater(root.querySelector('[data-close]'));
+}
+function closeMenu() {
+  if (!isOpen) return;
+  isOpen = false; stack = []; render(); vis.classList.remove('on');
+  hm.classList.remove('on'); scrim.classList.remove('on'); document.body.classList.remove('hm-lock');
+  page.forEach(el => el.removeAttribute('inert'));
+  menuBtn.setAttribute('aria-expanded', 'false');
+  (lastFocus && document.contains(lastFocus) ? lastFocus : menuBtn).focus({ preventScroll: true });
+}
+
+menuBtn.addEventListener('click', () => isOpen ? closeMenu() : openMenu());
+document.querySelectorAll('[data-open-menu]').forEach(b => b.addEventListener('click', () => openMenu(b.dataset.openMenu || null)));
+scrim.addEventListener('click', closeMenu);
+
+hm.addEventListener('click', e => {
+  const t = e.target.closest('[data-target],[data-back],[data-close]');
+  if (!t) return;
+  if (t.matches('[data-close]')) return closeMenu();
+  if (t.matches('[data-back]')) return back();
+  const id = t.dataset.target;
+  const already = stack.includes(id);
+  // Desktop: a click on a branch hover already opened keeps it open (no flicker), and moves keyboard focus in.
+  if (already && !mqMobile.matches) { if (e.detail === 0) focusLater(firstLink(document.getElementById(id))); return; }
+  openPanel(id, mqMobile.matches || e.detail === 0);
+});
+
+// Hover intent on desktop: open a branch after a short rest, never on a fly-by.
+let hoverT;
+hm.addEventListener('pointerover', e => {
+  if (!finePointer.matches || mqMobile.matches) return;
+  const b = e.target.closest('[data-target]');
+  clearTimeout(hoverT);
+  if (b && !stack.includes(b.dataset.target)) hoverT = setTimeout(() => openPanel(b.dataset.target, false), 160);
+});
+hm.addEventListener('pointerout', () => clearTimeout(hoverT));
+
+// Keyboard: arrows within a panel, right opens, left returns, Esc steps back.
+hm.addEventListener('keydown', e => {
+  const cur = document.activeElement;
+  const p = panelOf(cur);
+  if (e.key === 'Escape') { e.preventDefault(); return stack.length ? back() : closeMenu(); }
+  if (e.key === 'Tab') {
+    const f = [...hm.querySelectorAll('a,button')].filter(el => !el.closest('[inert]') && el.offsetParent !== null);
+    if (!f.length) return;
+    if (e.shiftKey && cur === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+    else if (!e.shiftKey && cur === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    return;
+  }
+  if (!p || !cur.classList.contains('hm-link')) return;
+  const links = [...p.querySelectorAll('.hm-link')];
+  const k = links.indexOf(cur);
+  if (e.key === 'ArrowDown') { e.preventDefault(); links[(k + 1) % links.length].focus(); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); links[(k - 1 + links.length) % links.length].focus(); }
+  if (e.key === 'Home') { e.preventDefault(); links[0].focus(); }
+  if (e.key === 'End') { e.preventDefault(); links[links.length - 1].focus(); }
+  if (e.key === 'ArrowRight' && cur.dataset.target) { e.preventDefault(); openPanel(cur.dataset.target, true); }
+  if (e.key === 'ArrowLeft' && p.id !== 'p-root') {
+    e.preventDefault();
+    const id = p.id; stack = stack.slice(0, stack.indexOf(id)); render(); focusLater(trig(id));
+  }
+});
+mqMobile.addEventListener('change', render);
+
+/* ---------- search sheet ---------- */
+const srch = $('#srch'), sBtn = $('#searchBtn'), q = $('#q');
+$('#popular').innerHTML = ['Alligator', 'Epsom', 'Shell Cordovan', 'Apple Watch Ultra', 'Bund strap', '20mm']
+  .map(t => `<a href="${B}/?s=${encodeURIComponent(t)}&post_type=product">${t}</a>`).join('');
+function openSearch() {
+  closeMenu();
+  srch.classList.add('on'); scrim.classList.add('on'); document.body.classList.add('hm-lock');
+  page.forEach(el => el.setAttribute('inert', ''));
+  sBtn.setAttribute('aria-expanded', 'true');
+  setTimeout(() => q.focus(), 80);
+}
+function closeSearch(restore = true) {
+  if (!srch.classList.contains('on')) return;
+  srch.classList.remove('on'); scrim.classList.remove('on'); document.body.classList.remove('hm-lock');
+  page.forEach(el => el.removeAttribute('inert'));
+  sBtn.setAttribute('aria-expanded', 'false');
+  if (restore) sBtn.focus();
+}
+sBtn.addEventListener('click', openSearch);
+$('#srchClose').addEventListener('click', () => closeSearch());
+scrim.addEventListener('click', () => closeSearch());
+srch.addEventListener('keydown', e => { if (e.key === 'Escape') closeSearch(); });
+
+/* ---------- header niceties ---------- */
+const hdr = $('#hdr');
+addEventListener('scroll', () => hdr.classList.toggle('scrolled', scrollY > 8), { passive: true });
+const ann = [...document.querySelectorAll('.ann span')];
+let a = 0, paused = false;
+$('.ann').addEventListener('pointerenter', () => paused = true);
+$('.ann').addEventListener('pointerleave', () => paused = false);
+setInterval(() => { if (paused) return; ann[a].classList.remove('on'); a = (a + 1) % ann.length; ann[a].classList.add('on'); }, 4500);
+})();
+</script>
+
+</body></html>
