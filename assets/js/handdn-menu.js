@@ -31,11 +31,8 @@
 		let hoverT = null;
 		let switchT = null;
 		let pendingTarget = null;
-		let leafT = null;
-		let visT = null;
 		let currentHoveredLink = null;
-		let visKey = '';
-		let front = 'a';
+		let hoverEl = null;
 
 		const trig = (id) => hm.querySelector(`[data-target="${id}"]`);
 		const panelOf = (el) => el.closest('.hm-panel');
@@ -179,10 +176,6 @@
 
 		function paint(el, v) {
 			if (!el) return;
-			const tex = (v && v.tex) ? v.tex : (el.dataset.tex || 'grain');
-			const tone = (v && v.tone) ? v.tone : (el.dataset.tone || '#3b2416');
-			const bgSwatch = `url(${swatch(tex, tone)})`;
-
 			if (el.dataset.img || (v && v.img)) {
 				const src = el.dataset.img || v.img;
 				el.style.backgroundImage = 'none';
@@ -190,8 +183,10 @@
 				el.innerHTML = `<img src="${src}" alt="" decoding="async" onerror="this.style.display='none'">`;
 				return;
 			}
+			const tex = (v && v.tex) ? v.tex : (el.dataset.tex || 'grain');
+			const tone = (v && v.tone) ? v.tone : (el.dataset.tone || '#3b2416');
 			el.innerHTML = '';
-			el.style.backgroundImage = bgSwatch;
+			el.style.backgroundImage = `url(${swatch(tex, tone)})`;
 		}
 
 		function paintAll(scope) {
@@ -210,195 +205,396 @@
 		// Initial paint of promo banner and feature cards
 		paintAll(document);
 
-		/* ---------- 2. Editorial Visual Pane Controller ---------- */
+		/* ---------- 2. Visual Banner (desktop backdrop) ----------
+		 * The banner sits fixed behind the opaque panels (CSS: left: var(--dmm-panel-w)).
+		 * Panels slide over it; only the caption follows them through --depth.
+		 *
+		 * Pane:    HIDDEN -> OPENING -> VISIBLE -> CLOSING -> HIDDEN   (class .on, clip-path reveal in CSS)
+		 * Content: the two PHP layers (.ph a/b). .is-front is visible; the other layer is prepared
+		 *          and crossfades in as .is-incoming only after its <img> has decoded, so the old
+		 *          visual stays on screen while the next one loads. Content is never cleared, so
+		 *          reopening the same visual costs no DOM work.
+		 * Every async step carries a generation number; a newer target turns older results into no-ops.
+		 */
 		const visA = vis ? vis.querySelector('a') : null;
 		const visCap = vis ? vis.querySelector('.cap') : null;
+		const layers = vis ? [...vis.querySelectorAll('.ph')] : [];
+		const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+		const FADE_MS = 240;
+		const ban = { front: null, frontKey: '', frontV: null, wantKey: '', incoming: null, gen: 0, paneWanted: false };
+		let panelW = 0;
 
-		function setVisual(v, key) {
-			if (!vis || !visA || !visCap || !v) return;
-			visKey = key;
+		layers.forEach((ph) => {
+			ph.classList.remove('out');
+			if (!ph.querySelector('img')) {
+				const img = document.createElement('img');
+				img.alt = '';
+				img.decoding = 'async';
+				ph.appendChild(img);
+			}
+		});
 
-			// Clear both layers so old images never linger or flash
-			vis.querySelectorAll('.ph').forEach((ph) => {
-				ph.classList.add('out');
-				ph.innerHTML = '';
-				ph.style.backgroundImage = 'none';
+		// Identity is the visual's content, not the menu item that carries it.
+		function visualKey(v) {
+			return JSON.stringify([v.img || '', v.k || '', v.t || '', v.go || '', v.href || '']);
+		}
+
+		/* Photo slots, measured from the panels actually open. The banner is fixed behind the panels, so only
+		 * the strip right of the top panel is visible. Reference viewport 1512x828 (panel 392px):
+		 *   no child panel open  (L0 item without a child menu)               -> "wide"   1120 x 828
+		 *   one panel open       (L0 with a child menu, L1 without L2 panel)  -> "medium"  728 x 828
+		 *   two or more open     (L1 with an L2 panel, L2 items)              -> "narrow"  336 x 828
+		 * Each slot is right-anchored and as wide as its strip; CSS caps the photo box at the reference size
+		 * and centres it, so larger screens do not enlarge photos past their 2x source. A layer keeps the
+		 * slot it was prepared with, so a photo never changes size while on screen. object-fit: contain:
+		 * never cropped or stretched. Upload specs (2x reference): wide 2240x1656, medium 1456x1656,
+		 * narrow 672x1656. */
+		const SLOT_ASPECT = { wide: 2240 / 1656, medium: 1456 / 1656, narrow: 672 / 1656 };
+		const aspects = new Map(); // photo url -> naturalWidth / naturalHeight, once known
+		const badImg = new Set(); // photo urls that failed to load or decode
+		const slotPx = { wide: 0, medium: 0, narrow: 0 };
+
+		function measurePanel() {
+			panelW = root.getBoundingClientRect().width || 380;
+			const next = {
+				wide: Math.max(0, Math.round(window.innerWidth - panelW)),
+				medium: Math.max(0, Math.round(window.innerWidth - 2 * panelW)),
+				narrow: Math.max(0, Math.round(window.innerWidth - 3 * panelW)),
+			};
+			if (!vis) return;
+			Object.keys(next).forEach((k) => {
+				if (next[k] !== slotPx[k]) {
+					slotPx[k] = next[k];
+					vis.style.setProperty(`--vis-slot-${k}`, `${next[k]}px`);
+				}
 			});
+		}
 
-			const next = front === 'a' ? 'b' : 'a';
-			const nEl = vis.querySelector(`[data-layer="${next}"]`);
-			front = next;
+		function hasRoom() {
+			return window.innerWidth - (stack.length + 1) * panelW >= 220;
+		}
 
-			paint(nEl, v);
-			if (nEl) nEl.classList.remove('out');
+		function slotForDepth(depth) {
+			if (depth >= 2) return 'narrow';
+			return depth === 1 ? 'medium' : 'wide';
+		}
 
+		function slotClass() {
+			return slotForDepth(stack.length);
+		}
+
+		// The slot an item's photo is designed for: panels open while it is hovered = its panel level,
+		// plus one if it opens a panel itself.
+		function designSlot(link) {
+			const p = panelOf(link);
+			const lvl = !p || p.id === 'p-root' ? 0 : parseInt(p.dataset.lvl, 10) || 0;
+			return slotForDepth(lvl + (link.dataset.target ? 1 : 0));
+		}
+
+		// A photo designed for another slot may stand in only if its shape is within 35% of this slot's
+		// shape; otherwise it is not forced in.
+		function fitsSlot(aspect, slot) {
+			return Math.abs(Math.log(aspect / SLOT_ASPECT[slot])) <= Math.log(1.35);
+		}
+
+		function loadInto(ph, url) {
+			const img = ph.querySelector('img');
+			if (img.getAttribute('src') !== url) {
+				img.src = url;
+			}
+			if (typeof img.decode === 'function') {
+				return img.decode();
+			}
+			if (img.complete && img.naturalWidth) {
+				return Promise.resolve();
+			}
+			return new Promise((resolve, reject) => {
+				img.onload = resolve;
+				img.onerror = reject;
+			});
+		}
+
+		function setCaption(v) {
+			if (!visCap || !visA) return;
 			const kEl = visCap.querySelector('.k');
 			const bEl = visCap.querySelector('b');
 			const goEl = visCap.querySelector('.go');
 			if (kEl) kEl.textContent = v.k || '';
 			if (bEl) bEl.textContent = v.t || '';
 			if (goEl) goEl.textContent = v.go || 'Shop';
-
 			visA.href = v.href || '#';
 		}
 
-		function getPromoVisual() {
-			const promoEl = root.querySelector('.hm-promo');
-			if (promoEl) {
-				const ph = promoEl.querySelector('.ph');
-				return {
-					tex: ph?.dataset?.tex || 'grain',
-					tone: ph?.dataset?.tone || '#8a4a26',
-					img: ph?.dataset?.img || '',
-					k: promoEl.querySelector('.k')?.textContent || '3D Custom',
-					t: promoEl.querySelector('b')?.textContent || 'Design your strap in 3D',
-					go: promoEl.querySelector('.go')?.textContent || 'Start designing',
-					href: promoEl.getAttribute('href') || '#',
-				};
-			}
-			return {
-				tex: 'grain',
-				tone: '#8a4a26',
-				k: '3D Custom',
-				t: 'Design your strap in 3D',
-				go: 'Start designing',
-				href: '#',
-			};
+		// No-image state: the shown layer has no photo. CSS turns that layer into the admin-chosen
+		// background (original background + black overlay, or original background only), hides the
+		// caption and lets the pointer through. Written only on change, to keep moves at 0 mutations.
+		function setBare(on) {
+			if (vis && vis.classList.contains('is-bare') !== on) vis.classList.toggle('is-bare', on);
 		}
 
-		function getVisualForId(id) {
-			if (!id || id === 'p-root') {
-				return getPromoVisual();
-			}
-
-			// 1. Trigger button or Panel element explicit data-visual
-			const trigBtn = hm.querySelector(`[data-target="${id}"][data-visual]`);
-			if (trigBtn && trigBtn.dataset.visual) {
-				try {
-					return JSON.parse(trigBtn.dataset.visual);
-				} catch (e) {}
-			}
-
-			const panel = document.getElementById(id);
-			if (panel && panel.dataset.visual) {
-				try {
-					return JSON.parse(panel.dataset.visual);
-				} catch (e) {}
-			}
-			if (panel) {
-				const feat = panel.querySelector('.feature');
-				if (feat) {
-					const ph = feat.querySelector('.ph');
-					return {
-						tex: ph?.dataset?.tex || 'smooth',
-						tone: ph?.dataset?.tone || '#6b3b20',
-						img: ph?.dataset?.img || '',
-						k: feat.querySelector('.k')?.textContent || '',
-						t: feat.querySelector('p')?.textContent || '',
-						go: feat.querySelector('.go')?.textContent || 'Discover',
-						href: feat.getAttribute('href') || '#',
-					};
-				}
-			}
-
-			// 2. Fallback to parent panel in stack if current panel has no custom visual
-			const currentIdx = stack.indexOf(id);
-			if (currentIdx > 0) {
-				const parentId = stack[currentIdx - 1];
-				const parentVis = getVisualForId(parentId);
-				if (parentVis) return parentVis;
-			}
-
-			return getPromoVisual();
+		function isEmptyLayer(ph) {
+			return !!ph && ph.classList.contains('is-empty');
 		}
 
-		function hideVisualInstant() {
-			clearTimeout(leafT);
-			clearTimeout(visT);
-			if (vis) {
-				vis.classList.remove('on');
-				vis.querySelectorAll('.ph').forEach((ph) => {
-					ph.classList.add('out');
-					ph.innerHTML = '';
-					ph.style.backgroundImage = 'none';
-				});
-				const kEl = visCap ? visCap.querySelector('.k') : null;
-				const bEl = visCap ? visCap.querySelector('b') : null;
-				const goEl = visCap ? visCap.querySelector('.go') : null;
-				if (kEl) kEl.textContent = '';
-				if (bEl) bEl.textContent = '';
-				if (goEl) goEl.textContent = '';
+		function promote(inc) {
+			if (inc.frontAnim) inc.frontAnim.cancel();
+			setBare(isEmptyLayer(inc.ph));
+			if (ban.front && ban.front !== inc.ph) {
+				ban.front.classList.remove('is-front');
 			}
-			visKey = '';
-			currentHoveredLink = null;
+			inc.ph.classList.remove('is-incoming');
+			inc.ph.classList.add('is-front');
+			ban.front = inc.ph;
+			ban.frontKey = inc.key;
+			ban.frontV = inc.v;
 		}
 
-		function updateVisualPosition() {
+		// Nearest-commit: a crossfade at >= 50% is finished instantly, below 50% it is undone.
+		// Either way the visible jump is at most half the opacity range, and one layer is free again.
+		function settleIncoming() {
+			const inc = ban.incoming;
+			if (!inc) return;
+			ban.incoming = null;
+			const timing = inc.anim.effect ? inc.anim.effect.getComputedTiming() : null;
+			const progress = timing && timing.progress !== null ? timing.progress : 1;
+			if (progress >= 0.5) {
+				promote(inc);
+			} else {
+				inc.ph.classList.remove('is-incoming');
+				if (inc.frontAnim) inc.frontAnim.cancel();
+				setBare(isEmptyLayer(ban.front));
+				if (ban.frontV) setCaption(ban.frontV); // caption belongs to the layer that stays
+			}
+			inc.anim.cancel();
+		}
+
+		function openPane() {
+			if (!vis || !ban.paneWanted) return;
+			// classList writes the attribute even when nothing changes; skip to keep same-visual moves at 0 mutations.
+			if (vis.classList.contains('on') && !vis.classList.contains('is-dismiss')) return;
+			vis.classList.remove('is-dismiss');
+			vis.classList.add('on');
+		}
+
+		// dismiss = full menu close: fade out instead of wiping beside a drawer that is leaving.
+		function closePane(dismiss = false) {
 			if (!vis) return;
-			const open = stack.length + 1;
-			const panelEl = hm.querySelector('.hm-panel');
-			const panelW = panelEl ? panelEl.getBoundingClientRect().width : 380;
-			const left = open * panelW;
-			vis.style.setProperty('--vis-left', left + 'px');
+			ban.paneWanted = false;
+			if (ban.wantKey !== ban.frontKey || ban.incoming) {
+				ban.gen++;
+				settleIncoming();
+				ban.wantKey = ban.frontKey;
+			}
+			if (!vis.classList.contains('on')) return;
+			vis.classList.toggle('is-dismiss', dismiss);
+			vis.classList.remove('on');
 		}
 
-		function showVisualForPanel(id) {
-			if (!vis || !isOpen || mqMobile.matches) return;
-			const v = getVisualForId(id);
-			if (!v) return;
-
-			const open = stack.length + 1;
-			const panelEl = hm.querySelector('.hm-panel');
-			const panelW = panelEl ? panelEl.getBoundingClientRect().width : 380;
-			const left = open * panelW;
-			const room = window.innerWidth - left;
-			if (room < 220) return;
-
-			vis.style.setProperty('--vis-left', left + 'px');
-			if (visKey !== id || !vis.classList.contains('on')) {
-				setVisual(v, id);
-				vis.classList.add('on');
+		function commit(ph, v, key) {
+			const empty = isEmptyLayer(ph);
+			// The no-image layer shows no caption: keep the old text while it fades out with the photo.
+			if (!empty) setCaption(v);
+			// A pane that is closing is still on screen (visibility flips to hidden only after the wipe),
+			// so it must crossfade too; only a fully hidden pane may swap content instantly.
+			const onScreen = vis.classList.contains('on') || getComputedStyle(vis).visibility === 'visible';
+			const fade = ban.front && onScreen && !reduceMotion.matches && typeof ph.animate === 'function';
+			if (!fade) {
+				promote({ ph, key, v });
+				openPane();
+				return;
+			}
+			openPane();
+			setBare(empty);
+			ph.classList.add('is-incoming');
+			const anim = ph.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FADE_MS, easing: 'ease' });
+			// A see-through layer cannot cover the old one, so the old photo fades out underneath it
+			// (held at 0 until promote() swaps the classes in the same task).
+			const frontAnim = empty
+				? ban.front.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FADE_MS, easing: 'ease', fill: 'forwards' })
+				: null;
+			const inc = { ph, key, v, anim, frontAnim };
+			ban.incoming = inc;
+			anim.finished.then(() => {
+				if (ban.incoming === inc) {
+					ban.incoming = null;
+					promote(inc);
+				}
+			}).catch(() => {});
+			if (!empty && visCap && typeof visCap.animate === 'function') {
+				visCap.animate([{ opacity: 0 }, { opacity: 1 }], { duration: FADE_MS, easing: 'ease' });
 			}
 		}
 
-		function getVisualTargetForLink(link, p) {
-			if (!link || !p) return null;
+		// r = { v: visual for the caption, img: photo url or '' (neutral), slot, check: verify shape after load }
+		function showContent(r) {
+			// Every no-image state looks the same (no photo, no caption), so they share one key.
+			const key = r.img ? `${r.slot}|${visualKey({ ...r.v, img: r.img })}` : 'empty';
+			if (key === ban.wantKey) return; // already visible or on its way
+			ban.wantKey = key;
+			const gen = ++ban.gen;
+			settleIncoming();
+			if (key === ban.frontKey) return;
 
-			if (p.id === 'p-root') {
-				if (link.dataset.visual) {
-					try {
-						return {
-							v: JSON.parse(link.dataset.visual),
-							key: link.getAttribute('href') || link.textContent.trim(),
-							isCustom: true,
-						};
-					} catch (e) {}
-				}
+			const ph = layers.find((l) => l !== ban.front);
+			if (!ph) return;
+			const current = () => gen === ban.gen;
+			const ready = r.img ? loadInto(ph, r.img) : Promise.resolve();
+			ready
+				.then(() => {
+					if (!current()) return;
+					if (r.img) {
+						const im = ph.querySelector('img');
+						aspects.set(r.img, im.naturalWidth / im.naturalHeight);
+						if (r.check && !fitsSlot(aspects.get(r.img), r.slot)) {
+							ban.wantKey = ban.frontKey; // parent photo does not suit this slot: resolve again
+							syncBanner();
+							return;
+						}
+					}
+					// Prepare the hidden layer, then fade it in.
+					if (ph.dataset.slot !== r.slot) ph.dataset.slot = r.slot;
+					if (ph.classList.contains('is-empty') !== !r.img) ph.classList.toggle('is-empty', !r.img);
+					commit(ph, r.v, key);
+				})
+				.catch(() => {
+					if (!current()) return;
+					// 404 or undecodable: never retry it; fall back to the next candidate or the neutral banner.
+					badImg.add(r.img);
+					ban.wantKey = ban.frontKey;
+					syncBanner();
+				});
+		}
+
+		function linkVisual(link) {
+			if (!link || !link.dataset.visual) return null;
+			const p = panelOf(link);
+			if (!p || (p.id !== 'p-root' && !stack.includes(p.id))) return null;
+			try {
+				return JSON.parse(link.dataset.visual);
+			} catch (e) {
 				return null;
 			}
+		}
 
-			// Inside sub-panel (Level 1, Level 2, ...)
-			if (link.dataset.visual) {
-				try {
-					return {
-						v: JSON.parse(link.dataset.visual),
-						key: link.getAttribute('href') || link.textContent.trim(),
-						isCustom: true,
-					};
-				} catch (e) {}
+		function panelVisual(id) {
+			const trig = hm.querySelector(`[data-target="${id}"][data-visual]`);
+			const panel = document.getElementById(id);
+			for (const el of [trig, panel]) {
+				if (el && el.dataset.visual) {
+					try {
+						return JSON.parse(el.dataset.visual);
+					} catch (e) {}
+				}
 			}
-
-			// Item does NOT have custom visual: takes parent's visual!
-			const parentVis = getVisualForId(p.id);
-			if (parentVis) {
-				return {
-					v: parentVis,
-					key: p.id,
-					isCustom: false,
-				};
-			}
-
 			return null;
+		}
+
+		/* The one decision for what the banner shows.
+		 * 1. The hovered item's own visual, else the visual of the item that opened the top panel:
+		 *    both are configured for the slot on screen, so their photo is used as is (strict).
+		 * 2. Visuals of panels further up: their photo only if its shape suits the slot.
+		 * 3. No usable photo (none configured, failed, or wrong shape): the no-image layer, styled by the
+		 *    admin setting "Background when no banner image is available". */
+		function resolveBanner() {
+			const slot = slotClass();
+			const list = [];
+			const own = linkVisual(currentHoveredLink);
+			// Strict only in the slot it was designed for (e.g. hovering an open L0 item while its L2 is open
+			// keeps two panels open, so its medium photo is checked for shape instead of forced into narrow).
+			if (own) list.push({ v: own, strict: designSlot(currentHoveredLink) === slot });
+			for (let i = stack.length - 1; i >= 0; i--) {
+				const pv = panelVisual(stack[i]);
+				if (pv) list.push({ v: pv, strict: !own && i === stack.length - 1 });
+			}
+			for (const c of list) {
+				const img = typeof c.v.img === 'string' ? c.v.img : '';
+				if (!img || badImg.has(img)) continue;
+				if (c.strict) return { v: c.v, img, slot };
+				const aspect = aspects.get(img);
+				if (aspect === undefined) return { v: c.v, img, slot, check: true };
+				if (fitsSlot(aspect, slot)) return { v: c.v, img, slot };
+			}
+			return { v: {}, img: '', slot };
+		}
+
+		function syncBanner() {
+			if (!vis) return;
+			const r = isOpen && !mqMobile.matches ? resolveBanner() : null;
+			if (!r || !hasRoom()) {
+				closePane();
+				return;
+			}
+			ban.paneWanted = true;
+			showContent(r);
+			if (ban.frontKey && (ban.frontKey === ban.wantKey || ban.incoming)) {
+				openPane();
+			}
+		}
+
+		/* Image prewarm through the browser cache: the hovered item's photo starts loading on pointerover
+		 * (before the 160ms intent timer), and the open panel's photos load one per idle slice.
+		 * Pointer activity in the last 250ms or a running crossfade postpones the next slice. */
+		const ric = window.requestIdleCallback
+			? (fn) => window.requestIdleCallback(fn, { timeout: 2000 })
+			: (fn) => setTimeout(fn, 200);
+		const warmed = new Map(); // url -> Promise settled when the photo is fetched and decoded
+		let warmQueue = [];
+		let warmScheduled = false;
+		let warmPanelId = '';
+		let lastPointerAt = 0;
+
+		function warmImage(url) {
+			if (!url || warmed.has(url) || badImg.has(url)) return;
+			const im = new Image();
+			im.decoding = 'async';
+			im.src = url;
+			const done = typeof im.decode === 'function'
+				? im.decode()
+				: new Promise((resolve, reject) => {
+					im.onload = resolve;
+					im.onerror = reject;
+				});
+			warmed.set(url, done.then(
+				() => aspects.set(url, im.naturalWidth / im.naturalHeight),
+				() => badImg.add(url)
+			));
+		}
+
+		function warmPanel(id) {
+			if (!vis || !id || id === warmPanelId || mqMobile.matches || !finePointer.matches) return;
+			warmPanelId = id;
+			const p = document.getElementById(id);
+			if (!p) return;
+			const urls = [];
+			const own = id === 'p-root' ? null : panelVisual(id);
+			if (own && own.img) urls.push(own.img);
+			p.querySelectorAll('.hm-link[data-visual]').forEach((el) => {
+				try {
+					const v = JSON.parse(el.dataset.visual);
+					if (v.img) urls.push(v.img);
+				} catch (e) {}
+			});
+			warmQueue = urls.filter((u, i) => urls.indexOf(u) === i && !warmed.has(u));
+			scheduleWarm();
+		}
+
+		function scheduleWarm() {
+			if (warmScheduled || !warmQueue.length) return;
+			warmScheduled = true;
+			ric(warmStep);
+		}
+
+		function warmStep() {
+			warmScheduled = false;
+			if (!isOpen || !warmQueue.length) return;
+			if (performance.now() - lastPointerAt < 250 || ban.incoming) {
+				warmScheduled = true;
+				setTimeout(() => ric(warmStep), 250);
+				return;
+			}
+			const url = warmQueue.shift();
+			warmImage(url);
+			(warmed.get(url) || Promise.resolve()).then(scheduleWarm);
 		}
 
 		/* ---------- 3. Drawer State Machine & Rendering ---------- */
@@ -417,16 +613,16 @@
 				b.setAttribute('aria-expanded', stack.includes(b.dataset.target) || pendingTarget === b.dataset.target);
 			});
 
-			updateVisualPosition();
-
-			if (stack.length === 0) {
-				hideVisualInstant();
-			} else if (!mqMobile.matches && isOpen) {
-				// Display the topmost open panel's visual banner promptly if no custom item visual is active
-				const topId = stack[stack.length - 1];
-				if (!currentHoveredLink || !currentHoveredLink.dataset.visual) {
-					showVisualForPanel(topId);
+			if (vis && !mqMobile.matches) {
+				// Caption offset follows the panels; written only when the depth changes.
+				const depth = String(stack.length);
+				if (vis.style.getPropertyValue('--depth') !== depth) {
+					vis.style.setProperty('--depth', depth);
 				}
+			}
+			syncBanner();
+			if (isOpen && !mqMobile.matches) {
+				warmPanel(stack.length ? stack[stack.length - 1] : 'p-root');
 			}
 		}
 
@@ -473,7 +669,6 @@
 
 		function back(focus = true) {
 			clearTimeout(switchT);
-			hideVisualInstant();
 			pendingTarget = null;
 			const id = stack.pop();
 			render();
@@ -496,6 +691,7 @@
 
 			paintAll(hm);
 			stack = [];
+			measurePanel();
 			render();
 
 			if (target) {
@@ -509,7 +705,9 @@
 			if (!isOpen) return;
 			clearTimeout(switchT);
 			clearTimeout(hoverT);
-			hideVisualInstant();
+			currentHoveredLink = null;
+			hoverEl = null;
+			closePane(true);
 			pendingTarget = null;
 			isOpen = false;
 			stack = [];
@@ -551,85 +749,65 @@
 			openPanel(id, mqMobile.matches || e.detail === 0);
 		});
 
-		// Desktop hover intent: cascade panels and visual banner smoothly (160ms responsive delay, 0s instant out)
+		// Desktop hover intent: one 160ms timer drives both the panel cascade and the banner,
+		// so the banner reveal starts in the same frame as the panel it belongs to.
 		hm.addEventListener('pointerover', (e) => {
 			if (!finePointer.matches || mqMobile.matches) return;
-
-			// 1. Branch button / panel cascading
-			const b = e.target.closest('[data-target]');
-			const a = e.target.closest('.hm-link, .hm-promo, .hm-foot');
+			const el = e.target.closest('[data-target], .hm-link, .hm-promo, .hm-foot');
+			if (!el || el === hoverEl) return;
+			hoverEl = el;
+			lastPointerAt = performance.now();
+			const link = el.classList.contains('hm-link') ? el : null;
+			if (link && link.dataset.visual) {
+				try {
+					warmImage(JSON.parse(link.dataset.visual).img);
+				} catch (e) {}
+			}
 			clearTimeout(hoverT);
-
-			if (b) {
-				const targetId = b.dataset.target;
-				if (!stack.includes(targetId)) {
-					hoverT = setTimeout(() => openPanel(targetId, false), 160);
-				}
-			} else if (a) {
-				const p = panelOf(a);
-				const curLvl = p ? (p.id === 'p-root' ? 0 : lvlOf(p.id)) : 0;
-				if (stack.length > curLvl || pendingTarget) {
-					hoverT = setTimeout(() => {
+			hoverT = setTimeout(() => {
+				currentHoveredLink = link;
+				if (el.matches('[data-target]')) {
+					const id = el.dataset.target;
+					if (!stack.includes(id)) {
+						openPanel(id, false);
+						return;
+					}
+				} else {
+					const p = panelOf(el);
+					const curLvl = p ? (p.id === 'p-root' ? 0 : lvlOf(p.id)) : 0;
+					if (stack.length > curLvl || pendingTarget) {
 						clearTimeout(switchT);
 						pendingTarget = null;
 						stack = stack.slice(0, curLvl);
-						render();
-					}, 160);
+					}
 				}
-			}
-
-			// 2. Visual banner hover synchronization
-			const link = e.target.closest('.hm-link');
-			if (!link) {
-				return;
-			}
-
-			const p = panelOf(link);
-			if (!p) return;
-
-			const target = getVisualTargetForLink(link, p);
-			if (!target) return;
-
-			// If target visual has the SAME key as what is currently showing:
-			// (e.g. moving between items that both use the parent's visual banner)
-			if (visKey === target.key && vis && vis.classList.contains('on')) {
-				// DO NOT HIDE! DO NOT RESET! DO NOT FLICKER!
-				currentHoveredLink = link;
-				clearTimeout(leafT);
-				return;
-			}
-
-			// If switching to a DIFFERENT visual:
-			currentHoveredLink = link;
-			clearTimeout(leafT);
-
-			leafT = setTimeout(() => {
-				if (!isOpen || currentHoveredLink !== link) return;
-				const open = stack.length + 1;
-				const panelEl = hm.querySelector('.hm-panel');
-				const panelW = panelEl ? panelEl.getBoundingClientRect().width : 380;
-				const left = open * panelW;
-				const room = window.innerWidth - left;
-				if (room < 220) return;
-
-				vis.style.setProperty('--vis-left', left + 'px');
-				setVisual(target.v, target.key);
-				vis.classList.add('on');
-			}, 140);
+				render();
+			}, 160);
 		});
 
 		hm.addEventListener('pointerout', (e) => {
 			if (!finePointer.matches || mqMobile.matches) return;
+			const to = e.relatedTarget;
+			if (hoverEl && to && hoverEl.contains(to)) return; // still inside the same item
 			clearTimeout(hoverT);
-
-			const toDrawer = e.relatedTarget ? e.relatedTarget.closest('.hm') : null;
+			hoverEl = null;
+			const toDrawer = to && to.closest ? to.closest('.hm') : null;
 			if (!toDrawer && stack.length === 0) {
-				hideVisualInstant();
+				currentHoveredLink = null;
+				render();
 			}
 		});
 
+		let resizeT = null;
 		window.addEventListener('resize', () => {
-			if (isOpen) render();
+			if (isOpen) {
+				measurePanel();
+				render();
+			}
+			clearTimeout(resizeT);
+			resizeT = setTimeout(() => {
+				if (isOpen) measurePanel();
+			}, 300);
 		});
 
 		mqMobile.addEventListener('change', () => {

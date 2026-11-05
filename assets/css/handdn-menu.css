@@ -22,6 +22,9 @@
 	--dmm-ease-out: cubic-bezier(.16, 1, .3, 1);
 	--dmm-t-drawer: 560ms;
 	--dmm-t-panel: 420ms;
+	/* Desktop child-panel open; shared with the Visual Banner reveal so they cannot drift. */
+	--dmm-t-panel-open: 600ms;
+	--dmm-ease-panel-open: cubic-bezier(.16, 1, .3, 1);
 	--dmm-t-item: 480ms;
 	--dmm-t-fade: 350ms;
 	--dmm-stagger: 45ms;
@@ -407,7 +410,7 @@ body.hm-lock {
 	transform: translateX(0) !important;
 	opacity: 1 !important;
 	visibility: visible !important;
-	transition: transform 600ms cubic-bezier(.16, 1, .3, 1) !important;
+	transition: transform var(--dmm-t-panel-open) var(--dmm-ease-panel-open) !important;
 }
 
 /* Panel Header Controls */
@@ -1095,31 +1098,38 @@ a:hover .ph.zoom {
 	position: fixed;
 	top: 0;
 	bottom: 0;
+	left: var(--dmm-panel-w);
 	right: 0;
-	z-index: 999949;
-	left: var(--vis-left, 100%);
-	opacity: 0;
-	visibility: hidden;
-	pointer-events: none;
+	z-index: 999949; /* below .hm (999950): opaque panels slide over the banner */
 	color: #f6f1ea;
+	/* Transparent: the pane only opens once a layer is ready, and each photo layer carries its own
+	   backdrop, so the no-image layer can show the original background (scrim + page) underneath. */
+	background: transparent;
 	overflow: hidden;
-	box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.08);
-	transition: none !important;
+	pointer-events: none;
+	visibility: hidden;
+	/* Closed: fully clipped from the right edge. Open/close wipes left↔right without moving the banner. */
+	clip-path: inset(0 100% 0 0);
+	transition: clip-path var(--dmm-t-panel-open) var(--dmm-ease-panel-open), visibility 0s linear var(--dmm-t-panel-open);
 }
 
 .hm-visual.on {
-	opacity: 1 !important;
-	visibility: visible !important;
-	pointer-events: auto !important;
-	transition: opacity 300ms ease, left 300ms cubic-bezier(.16, 1, .3, 1) !important;
+	visibility: visible;
+	pointer-events: auto;
+	clip-path: inset(0 0 0 0);
+	transition: clip-path var(--dmm-t-panel-open) var(--dmm-ease-panel-open);
 }
 
-.hm-visual:not(.on),
-.hm-visual:not(.on) * {
-	opacity: 0 !important;
-	visibility: hidden !important;
-	pointer-events: none !important;
-	transition: none !important;
+/* No-image state (setting "Background when no banner image is available"): the shown layer has no
+   photo. Nothing in the pane may catch the pointer, and the caption fades out with the photo. */
+.hm-visual.on.is-bare {
+	pointer-events: none;
+}
+
+/* Whole menu closing: the drawer leaves, so fade quickly instead of wiping beside nothing. */
+.hm-visual.is-dismiss {
+	opacity: 0;
+	transition: opacity 180ms ease, visibility 0s linear 180ms, clip-path 0s linear 180ms;
 }
 
 .hm-visual a {
@@ -1128,60 +1138,109 @@ a:hover .ph.zoom {
 	display: block;
 	color: inherit;
 	text-decoration: none;
-	opacity: 1 !important;
 }
 
+/* Two PHP layers: .is-front is shown, .is-incoming crossfades in above it (opacity animated in JS). */
 .hm-visual .ph {
 	position: absolute;
 	inset: 0;
-	opacity: 1 !important;
-	transition: opacity 300ms ease;
+	z-index: 0;
+	opacity: 0;
+	background: #1a1816; /* photo backdrop, never transparent even before the photo decodes */
+	box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.08);
 }
 
-.hm-visual .ph.out {
-	opacity: 0 !important;
-	visibility: hidden !important;
-	transition: none !important;
+.hm-visual .ph.is-front {
+	z-index: 1;
+	opacity: 1;
 }
 
+.hm-visual .ph.is-incoming {
+	z-index: 2;
+	opacity: 1;
+}
+
+/* Photo slots (JS sets --vis-slot-wide / -medium / -narrow from the visible strips). The photo box is
+   capped at the 1512x828 reference slot (wide 1120 x 828, medium 728 x 828, narrow 336 x 828 CSS px) so
+   larger screens do not enlarge photos past their 2x source, and centred in its slot. A layer keeps its
+   slot while on screen. object-fit: contain = the whole photo, never cropped or stretched. */
 .hm-visual .ph img {
-	position: absolute !important;
-	inset: 0 !important;
-	width: 100% !important;
-	height: 100% !important;
-	object-fit: cover !important;
-	display: block !important;
-	z-index: 0 !important;
-	opacity: 1 !important;
+	--slot-w: var(--vis-slot-medium, 728px);
+	--cap-w: 728px;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: auto; /* the generic .ph img rule sets inset: 0 */
+	right: calc((var(--slot-w) - min(var(--slot-w), var(--cap-w))) / 2);
+	margin-block: auto; /* vertical centring of the capped box */
+	display: block;
+	width: min(var(--slot-w), var(--cap-w));
+	height: min(100%, 828px);
+	object-fit: contain;
+	object-position: 50% 50%;
+}
+
+.hm-visual .ph[data-slot="wide"] img {
+	--slot-w: var(--vis-slot-wide, 1120px);
+	--cap-w: 1120px;
+}
+
+.hm-visual .ph[data-slot="narrow"] img {
+	--slot-w: var(--vis-slot-narrow, 336px);
+	--cap-w: 336px;
+}
+
+/* No-image layer: no usable photo for this slot (none set, failed, or wrong shape). It keeps the original
+   background and, by default, darkens it with a black overlay at the admin opacity (20-35%, default 25%,
+   set by PHP as --vis-fallback-alpha). data-fallback="none": original background only, no overlay.
+   Stacking: page + scrim (999940) -> this overlay (999949) -> menu panels (999950). */
+.hm-visual .ph.is-empty {
+	background: rgba(0, 0, 0, var(--vis-fallback-alpha, 0.25));
+	box-shadow: none;
+}
+
+.hm-visual[data-fallback="none"] .ph.is-empty {
+	background: transparent;
+}
+
+.hm-visual .ph.is-empty img,
+.hm-visual .ph.is-empty::after {
+	visibility: hidden;
 }
 
 .hm-visual .ph::after {
-	content: '' !important;
-	position: absolute !important;
-	inset: 0 !important;
-	background: linear-gradient(to top, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.15) 35%, rgba(0, 0, 0, 0) 65%) !important;
-	pointer-events: none !important;
-	z-index: 1 !important;
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	background: linear-gradient(to top, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.15) 35%, rgba(0, 0, 0, 0) 65%);
+	pointer-events: none;
 }
 
+/* The caption is the only moving part: it follows the panels on the same curve. */
 .hm-visual .cap {
 	position: absolute;
 	left: 32px;
-	right: 32px;
 	bottom: calc(32px + env(safe-area-inset-bottom, 0px));
-	z-index: 2;
+	z-index: 3;
 	display: grid;
 	gap: 6px;
-	max-width: 34ch;
-	opacity: 1 !important;
-	transition: opacity 300ms ease, transform 300ms var(--dmm-ease-out);
+	width: max-content;
+	max-width: min(34ch, calc(100% - var(--depth, 0) * var(--dmm-panel-w) - 64px));
+	transform: translateX(calc(var(--depth, 0) * var(--dmm-panel-w)));
+	transition: transform var(--dmm-t-panel-open) var(--dmm-ease-panel-open);
+}
+
+.hm-visual.is-bare .cap {
+	opacity: 0;
+	visibility: hidden;
+	transition: transform var(--dmm-t-panel-open) var(--dmm-ease-panel-open), opacity 240ms ease, visibility 0s linear 240ms;
 }
 
 .hm-visual .k {
 	font-size: 11px;
 	letter-spacing: 0.16em;
 	text-transform: uppercase;
-	opacity: 1 !important;
 }
 
 .hm-visual b {
@@ -1189,7 +1248,6 @@ a:hover .ph.zoom {
 	font-size: clamp(18px, 1.6vw, 24px);
 	line-height: 1.25;
 	text-wrap: balance;
-	opacity: 1 !important;
 }
 
 .hm-visual .go {
@@ -1197,6 +1255,15 @@ a:hover .ph.zoom {
 	margin-top: 8px;
 	text-decoration: underline;
 	text-underline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.hm-visual,
+	.hm-visual.on,
+	.hm-visual.is-dismiss,
+	.hm-visual .cap {
+		transition-duration: 0s;
+	}
 }
 
 @media (max-width: 767px) {

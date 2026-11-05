@@ -41,6 +41,29 @@ class DMM_Menu_Switcher {
 	}
 
 	/**
+	 * Visual Banner background when no banner image is available.
+	 * mode 'overlay' = original background + black overlay at `opacity` percent (20-35),
+	 * mode 'none'    = original background only. Missing or invalid values fall back to overlay at 25%.
+	 *
+	 * @param array|null $raw Values to normalise (defaults to the saved settings).
+	 * @return array{mode: string, opacity: int}
+	 */
+	public static function get_banner_fallback( ?array $raw = null ): array {
+		if ( null === $raw ) {
+			$raw = get_option( 'dmm_settings', array() );
+			$raw = is_array( $raw ) ? $raw : array();
+		}
+		$mode    = $raw['banner_fallback'] ?? 'overlay';
+		$opacity = $raw['banner_fallback_opacity'] ?? 25;
+		$opacity = is_numeric( $opacity ) ? (int) $opacity : 25;
+
+		return array(
+			'mode'    => 'none' === $mode ? 'none' : 'overlay',
+			'opacity' => ( $opacity >= 20 && $opacity <= 35 ) ? $opacity : 25,
+		);
+	}
+
+	/**
 	 * Filter wp_nav_menu arguments when standard WP menu source is chosen.
 	 *
 	 * @param array $args Arguments for wp_nav_menu.

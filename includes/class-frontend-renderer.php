@@ -89,7 +89,8 @@ class DMM_Frontend_Renderer {
 		</nav>
 
 		<!-- Handdn Desktop Editorial Visual Banner -->
-		<aside class="hm-visual" id="hmVis" aria-hidden="true">
+		<?php $banner_fallback = DMM_Menu_Switcher::get_banner_fallback(); ?>
+		<aside class="hm-visual" id="hmVis" aria-hidden="true" data-fallback="<?php echo esc_attr( $banner_fallback['mode'] ); ?>" style="--vis-fallback-alpha: <?php echo esc_attr( number_format( $banner_fallback['opacity'] / 100, 2, '.', '' ) ); ?>">
 			<a href="#" tabindex="-1">
 				<span class="ph" data-layer="a"></span>
 				<span class="ph out" data-layer="b"></span>

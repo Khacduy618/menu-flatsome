@@ -1,0 +1,111 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e7]:
+          - list [ref=e9]:
+            - listitem [ref=e10]:
+              - generic [ref=e11]:
+                - link "Follow on Facebook" [ref=e12] [cursor=pointer]:
+                  - /url: https://facebook.com/handdn
+                  - generic [aria-hidden] [ref=e13]: 
+                - link "Follow on Instagram" [ref=e14] [cursor=pointer]:
+                  - /url: https://instagram.com/handdn.store
+                  - generic [aria-hidden] [ref=e15]: 
+                - link "Follow on Twitter" [ref=e16] [cursor=pointer]:
+                  - /url: https://x.com/handdn
+                  - generic [aria-hidden] [ref=e17]: 
+                - link "Follow on YouTube" [ref=e18] [cursor=pointer]:
+                  - /url: https://youtube.com/@handdn
+                  - generic [aria-hidden] [ref=e19]: 
+          - list [ref=e21]:
+            - listitem [ref=e22]: Free shipping worldwide from $450
+          - list [ref=e24]:
+            - listitem [ref=e25]:
+              - link "Size Guide" [ref=e26] [cursor=pointer]:
+                - /url: /support-center/how-to-measure-exactly-watch-strap/
+              - text: "|"
+              - link "Contact Us" [ref=e27] [cursor=pointer]:
+                - /url: /contact/
+              - text: "|"
+              - link "Order Track" [ref=e28] [cursor=pointer]:
+                - /url: /my-account/track-order/
+        - navigation [ref=e30]:
+          - link [ref=e32] [cursor=pointer]:
+            - /url: https://handdn.ddev.site/
+            - img "handdn" [ref=e33]
+          - text:  
+          - list [ref=e35]:
+            - listitem [ref=e36]:
+              - button "Menu" [ref=e37] [cursor=pointer]:
+                - generic [aria-hidden] [ref=e38]: 
+            - listitem [ref=e40]
+            - listitem [ref=e41]:
+              - link "Search" [ref=e42] [cursor=pointer]:
+                - /url: "#"
+                - generic [aria-hidden] [ref=e43]: 
+          - list [ref=e45]:
+            - listitem [ref=e46]:
+              - button "View cart" [ref=e47] [cursor=pointer]:
+                - generic [ref=e48]:
+                  - text: Cart /
+                  - generic [ref=e49]: 0 $
+                - strong [ref=e53]: "0"
+            - listitem [ref=e54]
+            - listitem [ref=e55]:
+              - button "Login / Register" [ref=e56] [cursor=pointer]
+    - main [ref=e62]:
+      - generic [ref=e64]:
+        - article [ref=e67]:
+          - generic [ref=e68]:
+            - generic [ref=e70]:
+              - heading [level=6] [ref=e71]:
+                - link "Uncategorized" [ref=e72] [cursor=pointer]:
+                  - /url: https://handdn.ddev.site/category/uncategorized/
+              - heading [level=2] [ref=e73]:
+                - link "Hello world!" [ref=e74] [cursor=pointer]:
+                  - /url: https://handdn.ddev.site/2026/10/17/hello-world/
+              - generic [ref=e76]:
+                - generic [ref=e77]:
+                  - text: Posted on
+                  - link [ref=e78] [cursor=pointer]:
+                    - /url: https://handdn.ddev.site/2026/10/17/hello-world/
+                    - time [ref=e79]: October 17, 2026
+                - generic [ref=e80]:
+                  - text: by
+                  - link "admin" [ref=e82] [cursor=pointer]:
+                    - /url: https://handdn.ddev.site/author/admin/
+            - generic [ref=e84]:
+              - paragraph [ref=e85]: Welcome to WordPress. This is your first post. Edit or delete it, then start writing!
+              - link "Continue reading →" [ref=e87] [cursor=pointer]:
+                - /url: https://handdn.ddev.site/2026/10/17/hello-world/
+                - text: Continue reading
+                - generic [ref=e88]: →
+            - generic [ref=e89]:
+              - generic [ref=e90]:
+                - text: Posted in
+                - link "Uncategorized" [ref=e91] [cursor=pointer]:
+                  - /url: https://handdn.ddev.site/category/uncategorized/
+              - link [ref=e93] [cursor=pointer]:
+                - /url: https://handdn.ddev.site/2026/10/17/hello-world/#comments
+                - strong [ref=e94]: "2"
+                - text: Comments
+        - generic [ref=e95]:
+          - complementary
+    - contentinfo [ref=e96]:
+      - generic [ref=e98]:
+        - group "Payment icons" [ref=e100]:
+          - generic [ref=e101]: Visa
+          - generic [ref=e105]: PayPal
+          - generic [ref=e109]: Stripe
+          - generic [ref=e113]: MasterCard
+          - generic [ref=e120]: Cash On Delivery
+        - generic [ref=e125]:
+          - text: Copyright 2026 ©
+          - strong [ref=e126]: Flatsome Theme
+      - button "Go to top":
+        - generic [aria-hidden]: 
+  - dialog "Main menu"
+  - status [ref=e127]

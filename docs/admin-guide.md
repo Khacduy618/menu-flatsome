@@ -61,8 +61,23 @@ Khi bấm vào một item trong cây menu, một ngăn kéo bên phải (Side Sh
 * **Custom Badge / Tag**: Nhập các từ khóa tiếp thị nổi bật như `NEW`, `HOT`, `SALE`, `BESPOKE`... Badge sẽ xuất hiện thanh lịch bên cạnh nhãn menu.
 * **Visual Banner on Hover (Desktop Banner)**:
   * Khi khách hàng rê chuột vào item này ở cột cuối, panel Visual ngoài cùng bên phải sẽ hiển thị hình ảnh đại diện tương ứng.
-  * *Image URL*: Đường dẫn ảnh đại diện (có thể chọn trực tiếp từ Thư viện Media WordPress).
-  * *Texture*: Vân nền cao cấp (*Grain, Noise, Paper, Leather*).
+  * *Image URL*: Đường dẫn ảnh đại diện (có thể chọn trực tiếp từ Thư viện Media WordPress). Banner chỉ hiển thị **ảnh thật** (WebP ưu tiên, JPG/PNG); trường *Texture* không còn được dùng cho Visual Banner.
+  * **Kích thước ảnh theo trạng thái menu** (đo thực tế ở viewport tham chiếu 1512 × 828; ảnh hiển thị trọn vẹn bằng `object-fit: contain`, căn giữa, không cắt, không kéo giãn):
+
+    | Trạng thái menu khi rê chuột vào mục | Ô banner (1512 × 828) | Ảnh khuyến nghị (2x) | Tỉ lệ | Loại |
+    |---|---|---|---|---|
+    | L0 **không** có menu con | 1120 × 828 | 2240 × 1656 px | 1.35:1 | Wide |
+    | L0 **có** menu con | 728 × 828 | 1456 × 1656 px | 0.88:1 | Medium |
+    | L1 **không** mở menu cấp 2 | 728 × 828 | 1456 × 1656 px | 0.88:1 | Medium |
+    | L1 **có** mở menu cấp 2 | 336 × 828 | 672 × 1656 px | 0.41:1 | Narrow |
+    | L2 | 336 × 828 | 672 × 1656 px | 0.41:1 | Narrow |
+
+    * Ô banner là phần nhìn thấy bên phải panel đang mở trên cùng: mỗi panel mở ra che thêm một phần banner, nên kích thước phụ thuộc vào mục đó có mở panel con hay không, không chỉ vào cấp L0/L1/L2.
+    * Màn khác 1512px: ô co giãn theo màn hình; ảnh được giữ nguyên tỉ lệ và không phóng to quá kích thước tham chiếu (1120 / 728 / 336 × 828).
+    * Trang quản trị tự hiện kích thước khuyến nghị cho từng mục và cảnh báo (không chặn) khi ảnh khác tỉ lệ hoặc thiếu độ phân giải.
+    * Ảnh nhỏ hơn khuyến nghị vẫn dùng được (không bị cắt) nhưng có thể kém nét; không tự phóng to ảnh nguồn để "đạt chuẩn".
+    * Mục không có ảnh: banner dùng ảnh của mục cha nếu hình dạng ảnh hợp với ô đang hiển thị; nếu không, banner hiện nền tối kèm chữ (kicker/headline) thay vì cắt ảnh.
+  * *Texture*: Vân nền cao cấp (*Grain, Noise, Paper, Leather*) — chỉ còn dùng cho thẻ Promo/Feature, không dùng cho Visual Banner.
   * *Kicker*: Dòng chữ phụ nhỏ bên trên (ví dụ: `COLLECTION`, `EXCLUSIVE`).
   * *Headline*: Tiêu đề chính của banner.
   * *CTA Text & Link*: Nút bấm kêu gọi hành động (ví dụ: `DISCOVER NOW`).

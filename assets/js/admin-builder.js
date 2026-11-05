@@ -46,7 +46,81 @@
       this.bindJsonPanel();
       this.bindImportAndReset();
       this.bindCollapseToggles();
+      this.initBannerFallbackSetting();
       this.bindGlobalSave();
+    },
+
+    /**
+     * Normalise the saved "no banner image" background setting (same rules as
+     * DMM_Menu_Switcher::get_banner_fallback): overlay at 25% unless a valid value is stored.
+     */
+    getBannerFallback: function (raw) {
+      raw = raw || {};
+      var opacity = parseInt(raw.banner_fallback_opacity, 10);
+      return {
+        mode: raw.banner_fallback === 'none' ? 'none' : 'overlay',
+        opacity: (opacity >= 20 && opacity <= 35) ? opacity : 25
+      };
+    },
+
+    /**
+     * Settings tab: "Background when no banner image is available". Saved with Save Changes
+     * (general_settings); it changes no menu item, so Apply Changes is unaffected.
+     */
+    initBannerFallbackSetting: function () {
+      var $tab = $('#dmm-tab-settings');
+      if (!$tab.length || $('#dmm-banner-fallback').length) {
+        return;
+      }
+      var cur = this.getBannerFallback(window.dmmAdmin ? window.dmmAdmin.settings : null);
+      var choice = function (value, title, text) {
+        return '<label class="dmm-bg-choice">' +
+          '<input type="radio" name="dmm-banner-fallback" value="' + value + '">' +
+          '<span class="dmm-bg-choice-preview dmm-bg-choice-preview--' + value + '" aria-hidden="true">' +
+          '<span class="dmm-bg-choice-panel"></span><span class="dmm-bg-choice-area"></span></span>' +
+          '<span class="dmm-bg-choice-text"><strong>' + title + '</strong><span>' + text + '</span></span>' +
+          '</label>';
+      };
+      var html =
+        '<div class="dmm-card" id="dmm-banner-fallback">' +
+          '<div class="dmm-card-header"><div>' +
+            '<h3 class="dmm-card-title">Visual Banner</h3>' +
+            '<p class="dmm-card-description">Desktop banner area beside the open menu panels.</p>' +
+          '</div></div>' +
+          '<div class="dmm-card-body">' +
+            '<fieldset class="dmm-form-group dmm-bg-fieldset">' +
+              '<legend class="dmm-label">Background when no banner image is available</legend>' +
+              '<p class="dmm-card-description">Used when the hovered item has no banner image, its image fails to load, ' +
+                'or no image suits the current banner size (including the fallback image). A valid image always shows normally.</p>' +
+              '<div class="dmm-bg-choices">' +
+                choice('overlay', 'Original background + dark overlay', 'Keeps the original background and darkens it with a semi-transparent black layer.') +
+                choice('none', 'Original background (no overlay)', 'Keeps the original background exactly as it is. Nothing is shown in the banner area.') +
+              '</div>' +
+              '<div class="dmm-bg-opacity" id="dmm-banner-fallback-opacity-row">' +
+                '<label class="dmm-label" for="dmm-banner-fallback-opacity">Overlay opacity</label>' +
+                '<div class="dmm-inline-fields">' +
+                  '<input type="range" id="dmm-banner-fallback-opacity" min="20" max="35" step="1">' +
+                  '<output id="dmm-banner-fallback-opacity-value" for="dmm-banner-fallback-opacity"></output>' +
+                '</div>' +
+                '<p class="dmm-card-description">20% to 35% black. Default 25%.</p>' +
+              '</div>' +
+            '</fieldset>' +
+          '</div>' +
+        '</div>';
+      $tab.append(html);
+
+      var $opacity = $('#dmm-banner-fallback-opacity');
+      var sync = function () {
+        var mode = $('input[name="dmm-banner-fallback"]:checked').val();
+        var pct = parseInt($opacity.val(), 10);
+        $('#dmm-banner-fallback-opacity-row').prop('hidden', mode !== 'overlay');
+        $('#dmm-banner-fallback-opacity-value').text(pct + '%');
+        $('#dmm-banner-fallback').css('--dmm-bg-alpha', String(pct / 100));
+      };
+      $('input[name="dmm-banner-fallback"][value="' + cur.mode + '"]').prop('checked', true);
+      $opacity.val(cur.opacity);
+      $tab.on('change input', 'input[name="dmm-banner-fallback"], #dmm-banner-fallback-opacity', sync);
+      sync();
     },
 
     /**
@@ -78,6 +152,131 @@
         $previewImg.attr('src', '');
         $previewWrap.hide();
       }
+      if (prefix === 'insp-visual') {
+        this.checkVisualImage(url);
+      }
+    },
+
+    /**
+     * Visual Banner image spec for an item, derived from the panels the frontend renders
+     * (DMM_Frontend_Renderer): panel level = number of non-heading ancestors, and an item that
+     * opens a panel (has children, or is a sizes grid) is shown one level deeper. Panels open while
+     * the photo shows: 0 -> wide slot, 1 -> medium slot, 2+ -> narrow slot (see handdn-menu.js).
+     */
+    getVisualSpec: function (item, typeOverride) {
+      if (!item) return null;
+      var type = typeOverride || item.item_type || 'link';
+      if (type === 'heading') return null;
+      var level = 0;
+      var cur = item;
+      for (var guard = 0; guard < 12 && cur && String(cur.menu_item_parent || '0') !== '0'; guard++) {
+        cur = this.findItem(cur.menu_item_parent);
+        if (cur && (cur.item_type || 'link') !== 'heading') level++;
+      }
+      var opensPanel = type === 'sizes_grid' || this.countDirectChildren(item.db_id) > 0;
+      var shownAt = level + (opensPanel ? 1 : 0); // panels open while this item's photo is shown
+      // Slot sizes measured at the 1512 x 828 reference viewport; recommended source = 2x.
+      if (shownAt === 0) {
+        return {
+          w: 2240, h: 1656,
+          label: '2240 × 1656 px (1.35:1, wide)',
+          why: 'This level-0 item has no child menu, so no panel opens and its photo uses the wide banner slot (1120 × 828 at the reference size).'
+        };
+      }
+      if (shownAt === 1) {
+        return {
+          w: 1456, h: 1656,
+          label: '1456 × 1656 px (0.88:1, medium)',
+          why: level === 0
+            ? 'This level-0 item opens a child menu, so its photo shows in the medium banner slot (728 × 828 at the reference size).'
+            : 'This level-1 item has no level-2 panel, so its photo shows in the medium banner slot (728 × 828 at the reference size).'
+        };
+      }
+      return {
+        w: 672, h: 1656,
+        label: '672 × 1656 px (0.41:1, narrow)',
+        why: opensPanel
+          ? 'This item opens a level-2 panel, so its photo shows in the narrow banner slot (336 × 828 at the reference size).'
+          : 'Level-2 items show their photo in the narrow banner slot (336 × 828 at the reference size).'
+      };
+    },
+
+    ensureVisualSpecUi: function () {
+      if (this.$visualSpec) return;
+      this.$visualSpec = $('<div class="dmm-callout dmm-img-spec" id="dmm-insp-visual-spec"></div>');
+      $('.dmm-insp-visual-upload-row').first().before(this.$visualSpec);
+      this.$visualCheck = $('<div class="dmm-img-check" id="dmm-insp-visual-check" role="status" aria-live="polite" hidden></div>');
+      $('.dmm-insp-visual-preview-wrap').first().append(this.$visualCheck);
+    },
+
+    /**
+     * Show the recommended size for the open item and compare the selected image with it.
+     * Advisory only: nothing here blocks selecting, applying or saving.
+     */
+    checkVisualImage: function (url) {
+      this.ensureVisualSpecUi();
+      var self = this;
+      var token = (this.visualCheckToken = (this.visualCheckToken || 0) + 1);
+      var spec = this.getVisualSpec(this.findItem(this.activeInspectorId), $('#dmm-insp-type').val());
+      var $spec = this.$visualSpec;
+      var $check = this.$visualCheck;
+
+      $spec.empty();
+      if (!spec) {
+        $spec.hide();
+        $check.attr('hidden', true).empty();
+        return;
+      }
+      $spec.append($('<span></span>').append(
+        $('<strong></strong>').text('Recommended image: ' + spec.label + '. '),
+        document.createTextNode(spec.why + ' The banner always shows the whole image, without cropping.')
+      )).show();
+
+      url = url ? String(url).trim() : '';
+      if (!url) {
+        $check.attr('hidden', true).empty();
+        return;
+      }
+
+      var show = function (lines, warn) {
+        if (token !== self.visualCheckToken) return; // a newer image was selected meanwhile
+        $check.empty().removeAttr('hidden').toggleClass('is-warn', warn).toggleClass('is-ok', !warn);
+        lines.forEach(function (text) {
+          $check.append($('<p></p>').text(text));
+        });
+      };
+
+      var probe = new Image();
+      probe.onload = function () {
+        var w = probe.naturalWidth;
+        var h = probe.naturalHeight;
+        if (!w || !h) {
+          show(['Could not read this image\'s dimensions.'], true);
+          return;
+        }
+        var deviation = Math.abs((w / h) / (spec.w / spec.h) - 1);
+        var upscale = Math.min(spec.w / w, spec.h / h); // > 1: enlarged at the recommended display size
+        var lines = ['Selected image: ' + w + ' × ' + h + ' px (' + (w / h).toFixed(2) + ':1).'];
+        var warn = false;
+        if (deviation > 0.1) {
+          warn = true;
+          lines.push('Warning: This image has a different aspect ratio from the recommended image slot. It may appear smaller because the banner preserves the complete image without cropping.');
+        }
+        if (upscale > 1.02) {
+          warn = true;
+          lines.push('Warning: This image may appear soft or blurry at the recommended display size.');
+        }
+        if (!warn) {
+          lines.push(deviation > 0.02
+            ? 'Image dimensions differ from the recommended size. The image will remain proportional and will not be cropped.'
+            : 'Image dimensions match the recommended specification.');
+        }
+        show(lines, warn);
+      };
+      probe.onerror = function () {
+        show(['Could not load this image to check its dimensions. You can still use it.'], true);
+      };
+      probe.src = url;
     },
 
     /**
@@ -782,6 +981,10 @@
         } else {
           $('#dmm-insp-type-desc').text('');
         }
+        // A sizes grid opens a panel, which can move the banner photo to the narrow slot.
+        if (self.activeInspectorId) {
+          self.checkVisualImage($('#dmm-insp-visual-image-url').val());
+        }
       });
 
       // Visual enabled toggle
@@ -1192,6 +1395,10 @@
           desktop_source: 'custom_json',
           mobile_source: 'custom_json'
         };
+        if ($('#dmm-banner-fallback').length) {
+          generalSettings.banner_fallback = $('input[name="dmm-banner-fallback"]:checked').val() === 'none' ? 'none' : 'overlay';
+          generalSettings.banner_fallback_opacity = parseInt($('#dmm-banner-fallback-opacity').val(), 10) || 25;
+        }
 
         $.ajax({
           url: (window.dmmAdmin ? window.dmmAdmin.ajaxUrl : '') || ajaxurl,

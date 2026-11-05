@@ -204,6 +204,11 @@ class DMM_Admin_Settings {
 				$clean_settings['mobile_override']   = isset( $general['mobile_override'] ) ? ( ! empty( $general['mobile_override'] ) ? 1 : 0 ) : 1;
 				$clean_settings['desktop_source']    = sanitize_text_field( $general['desktop_source'] ?? 'custom_json' );
 				$clean_settings['mobile_source']     = sanitize_text_field( $general['mobile_source'] ?? 'custom_json' );
+				if ( isset( $general['banner_fallback'] ) || isset( $general['banner_fallback_opacity'] ) ) {
+					$fallback                                  = DMM_Menu_Switcher::get_banner_fallback( array_merge( $clean_settings, $general ) );
+					$clean_settings['banner_fallback']         = $fallback['mode'];
+					$clean_settings['banner_fallback_opacity'] = $fallback['opacity'];
+				}
 			}
 		}
 
